@@ -1,0 +1,11 @@
+# Datos DGA / AGROMET (no se versionan)
+*_historico*.txt
+agromet_*.csv
+data/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.venv/
