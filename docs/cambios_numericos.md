@@ -162,6 +162,36 @@ distribución de menor D en KS, b = 0.33):
 
 TRANQUE LAS PATAGUAS y TRANQUE MILLAHUE no tienen ajuste (0 años completos).
 
+## Hallazgo #3: Giandotti con el desnivel del cauce en vez de la altitud media sobre la salida
+
+**Problema.** La fórmula de Giandotti, $t_c = (4\sqrt{A} + 1.5L) / (0.8\sqrt{H})$, define $H$ como
+la **altitud media de la cuenca menos la cota de la salida** [m]. El dashboard usaba el desnivel
+del cauce ($H_{máx} - H_{mín}$), que suele ser mayor que $H$. Como $t_c \propto 1/\sqrt{H}$, el tc
+de Giandotti quedaba subestimado.
+
+**Corrección.** El módulo de cuenca pide la altitud media de la cuenca y la cota de la salida
+(m s.n.m., desde el DEM o la curva hipsométrica). Los campos parten vacíos: la app no inventa valores, y
+Giandotti queda como "pendiente" hasta que se ingresan. Si $\bar z \le z_{salida}$ se muestra un
+error, y si $H$ supera el desnivel del cauce, una advertencia. Kirpich y California no cambian. El
+control de dispersión (> 3 veces) usa solo las fórmulas disponibles. En código,
+`tiempos_concentracion(..., h_giandotti_m=geom.desnivel_m)` reproduce el original.
+
+**Efecto.** No se puede cuantificar sin los datos del DEM de la cuenca. Como sensibilidad, para la
+cuenca de ejemplo de la app (A = 15.5 km², L = 8.2 km, desnivel del cauce 369 m; Kirpich y
+California = 1.11 h):
+
+| H [m] | H / desnivel | tc Giandotti [h] | vs. original (1.83 h) | Lag SCS = 0.6·tc [min] |
+|---|---|---|---|---|
+| 100 | 0.27 | 3.51 | +92 % | 126.2 |
+| 150 | 0.41 | 2.86 | +57 % | 103.1 |
+| 200 | 0.54 | 2.48 | +36 % | 89.2 |
+| 250 | 0.68 | 2.22 | +21 % | 79.8 |
+| 300 | 0.81 | 2.02 | +11 % | 72.9 |
+| 369 | 1.00 | 1.83 | 0 % (original) | 65.7 |
+
+**Alcance en la ficha HEC-HMS.** El tc adoptado por defecto sigue siendo Kirpich, así que la ficha
+solo cambia si el usuario adopta el valor de Giandotti.
+
 ## Hallazgo #10: elección de la distribución sin revisar la cola
 
 **Problema.** La tormenta de diseño usaba por defecto la distribución con menor estadístico D de

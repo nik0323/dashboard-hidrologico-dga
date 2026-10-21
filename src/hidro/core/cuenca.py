@@ -39,37 +39,51 @@ def tc_california(longitud_km: float, desnivel_m: float) -> float:
     return (0.87 * longitud_km ** 3 / desnivel_m) ** 0.385
 
 
-def tc_giandotti(area_km2: float, longitud_km: float, desnivel_m: float) -> float:
-    """Giandotti [h]: tc = (4·√A + 1.5·L) / (0.8·√H), A [km²], L [km], H [m].
+def tc_giandotti(area_km2: float, longitud_km: float, h_media_sobre_salida_m: float) -> float:
+    """Giandotti [h]: tc = (4·√A + 1.5·L) / (0.8·√H), A [km²], L [km].
 
-    ADVERTENCIA (hallazgo #3): la formulación original usa H = altitud media de la cuenca
-    sobre la salida; aquí se recibe el desnivel del cauce, como en la versión original del
-    dashboard.
+    H [m] es la altitud media de la cuenca menos la cota de la salida, no el desnivel del cauce
+    (hallazgo #3). Ver `altura_media_sobre_salida`.
     """
-    return (4 * np.sqrt(area_km2) + 1.5 * longitud_km) / (0.8 * np.sqrt(desnivel_m))
+    return (4 * np.sqrt(area_km2) + 1.5 * longitud_km) / (0.8 * np.sqrt(h_media_sobre_salida_m))
+
+
+def altura_media_sobre_salida(altitud_media_m: float, cota_salida_m: float) -> float:
+    """H de Giandotti [m] = altitud media de la cuenca [m s.n.m.] − cota de la salida [m s.n.m.]."""
+    h = altitud_media_m - cota_salida_m
+    if h <= 0:
+        raise ValueError("La altitud media de la cuenca debe ser mayor que la cota de la salida.")
+    return h
 
 
 @dataclass(frozen=True)
 class TiemposConcentracion:
-    """Tiempos de concentración [h] por fórmula."""
+    """Tiempos de concentración [h] por fórmula; giandotti es None si falta H."""
 
     kirpich: float
     california: float
-    giandotti: float
+    giandotti: float | None
 
     def como_array(self) -> np.ndarray:
-        return np.array([self.kirpich, self.california, self.giandotti])
+        """Tiempos disponibles (omite Giandotti si no se calculó)."""
+        return np.array([t for t in (self.kirpich, self.california, self.giandotti) if t is not None])
 
     def dispersion_excesiva(self, factor: float = FACTOR_DISPERSION_TC) -> bool:
         tcs = self.como_array()
         return bool(tcs.max() / tcs.min() > factor)
 
 
-def tiempos_concentracion(area_km2: float, longitud_km: float, geom: GeometriaCauce) -> TiemposConcentracion:
+def tiempos_concentracion(area_km2: float, longitud_km: float, geom: GeometriaCauce,
+                          h_giandotti_m: float | None) -> TiemposConcentracion:
+    """Kirpich y California con la geometría del cauce; Giandotti con H = altitud media − cota de salida [m].
+
+    `h_giandotti_m=None` omite Giandotti. `h_giandotti_m=geom.desnivel_m` reproduce el dashboard
+    original (hallazgo #3).
+    """
     return TiemposConcentracion(
         kirpich=tc_kirpich(longitud_km, geom.pendiente),
         california=tc_california(longitud_km, geom.desnivel_m),
-        giandotti=tc_giandotti(area_km2, longitud_km, geom.desnivel_m),
+        giandotti=None if h_giandotti_m is None else tc_giandotti(area_km2, longitud_km, h_giandotti_m),
     )
 
 

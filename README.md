@@ -162,7 +162,7 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
 - #1 y #1b (corregidos): la imputación AGROMET solo rellena vacíos dentro del periodo DGA y en
   años con cobertura DGA >= 80 % (`[imputacion].cobertura_min_anual`).
 - #2: AGROMET se aplica a cualquier estación sin importar la distancia.
-- #3: Giandotti usa el desnivel del cauce en vez de la altitud media de la cuenca sobre la salida.
+- #3 (corregido): Giandotti usa H = altitud media de la cuenca − cota de salida (entradas desde el DEM).
 - #4 (corregido): PMA y QMA excluyen años calendario con cobertura < 80 %
   (`[maximos_anuales].cobertura_min_anual`).
 - #5, #6: AGROMET usa el día calendario 00-24 h, y las horas faltantes y los valores rechazados por QA se suman como 0 mm.

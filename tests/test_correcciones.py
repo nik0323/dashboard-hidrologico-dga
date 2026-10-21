@@ -195,6 +195,36 @@ def test_hallazgo10_configurado():
     assert (s.t_cola, s.crecimiento_min_cola) == ((50, 500), 0.05)
 
 
+# ---------- Hallazgo #3: Giandotti con H = altitud media de la cuenca − cota de salida ----------
+def test_hallazgo3_giandotti_usa_altura_media():
+    from hidro.core import cuenca
+    geom = cuenca.geometria_desde_desnivel(8.2, 369.0)
+    h = cuenca.altura_media_sobre_salida(650.0, 450.0)
+    assert h == 200.0
+    tcs = cuenca.tiempos_concentracion(15.5, 8.2, geom, h)
+    assert tcs.giandotti == pytest.approx((4 * np.sqrt(15.5) + 1.5 * 8.2) / (0.8 * np.sqrt(200.0)), rel=1e-15)
+    # Kirpich y California no dependen de H
+    original = cuenca.tiempos_concentracion(15.5, 8.2, geom, geom.desnivel_m)
+    assert (tcs.kirpich, tcs.california) == (original.kirpich, original.california)
+    # tc ∝ 1/√H: con H menor que el desnivel del cauce, Giandotti aumenta
+    assert tcs.giandotti / original.giandotti == pytest.approx(np.sqrt(369.0 / 200.0), rel=1e-12)
+
+
+def test_hallazgo3_sin_altura_omite_giandotti():
+    from hidro.core import cuenca
+    tcs = cuenca.tiempos_concentracion(15.5, 8.2, cuenca.geometria_desde_pendiente(8.2, 0.045), None)
+    assert tcs.giandotti is None
+    assert len(tcs.como_array()) == 2
+    assert tcs.dispersion_excesiva() == bool(max(tcs.kirpich, tcs.california) / min(tcs.kirpich, tcs.california) > 3)
+
+
+@pytest.mark.parametrize("media, salida", [(450.0, 450.0), (400.0, 450.0)])
+def test_hallazgo3_altura_invalida(media, salida):
+    from hidro.core import cuenca
+    with pytest.raises(ValueError):
+        cuenca.altura_media_sobre_salida(media, salida)
+
+
 def test_hallazgo7_factor_configurado():
     t = cargar_settings().tormenta
     assert (t.factor_intervalo_fijo, t.factor_min, t.factor_max) == (1.13, 1.0, 1.2)

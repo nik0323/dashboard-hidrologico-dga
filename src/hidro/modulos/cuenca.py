@@ -75,11 +75,32 @@ class Cuenca(Modulo):
         if geom.pendiente > calc.PENDIENTE_ALERTA:
             st.warning(f"Pendiente media de {geom.pendiente:.3f} m/m (> 50%). Revise que L y el desnivel estén en las unidades correctas.")
 
-        tcs = calc.tiempos_concentracion(area_km2, longitud_km, geom)
+        st.markdown("Giandotti usa la altitud media de la cuenca sobre la salida ($H = \\bar{z} - z_{salida}$), "
+                    "no el desnivel del cauce.")
+        cg1, cg2 = st.columns(2)
+        altitud_media = cg1.number_input("Altitud media de la cuenca ($\\bar{z}$ en m s.n.m.):", min_value=0.0,
+                                         value=None, step=1.0, placeholder="desde el DEM (curva hipsométrica)",
+                                         key=ctx.key("altitud_media"))
+        cota_salida = cg2.number_input("Cota de la salida ($z_{salida}$ en m s.n.m.):", min_value=0.0,
+                                       value=None, step=1.0, placeholder="desde el DEM", key=ctx.key("cota_salida"))
+        h_giandotti = None
+        if altitud_media is not None and cota_salida is not None:
+            try:
+                h_giandotti = calc.altura_media_sobre_salida(altitud_media, cota_salida)
+            except ValueError as e:
+                st.error(str(e))
+        if h_giandotti is not None and h_giandotti > geom.desnivel_m:
+            st.warning(f"H de Giandotti ({h_giandotti:.0f} m) supera el desnivel del cauce ({geom.desnivel_m:.0f} m). "
+                       "Es inusual: revise la altitud media y la cota de salida.")
+
+        tcs = calc.tiempos_concentracion(area_km2, longitud_km, geom, h_giandotti)
         st.markdown("### Resultados de Tiempo de Concentración ($t_c$)")
         st.info(f"**Fórmula de Kirpich:** {tcs.kirpich:.2f} horas (Recomendado laderas fuertes)")
         st.info(f"**Fórmula de California:** {tcs.california:.2f} horas")
-        st.info(f"**Fórmula de Giandotti:** {tcs.giandotti:.2f} horas")
+        if tcs.giandotti is None:
+            st.info("**Fórmula de Giandotti:** ingrese la altitud media de la cuenca y la cota de la salida.")
+        else:
+            st.info(f"**Fórmula de Giandotti:** {tcs.giandotti:.2f} horas (H = {h_giandotti:.0f} m)")
         if tcs.dispersion_excesiva():
             st.warning("Las fórmulas difieren en más de 3 veces. Justifique el tc adoptado según el tipo de cuenca.")
 

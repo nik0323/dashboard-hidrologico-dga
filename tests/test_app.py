@@ -95,6 +95,24 @@ def test_hallazgo10_tormenta_usa_distribucion_recomendada(dir_datos):
     assert any(f"Distribución recomendada para diseño: **{esperada}**" in x.value for x in at.caption)
 
 
+def _texto_giandotti(at):
+    return next(i.value for i in at.info if "Giandotti" in i.value)
+
+
+def test_hallazgo3_giandotti_pide_altura_media_y_la_usa(dir_datos):
+    at = _ejecutar("Parámetros de Cuenca (HEC-HMS)")
+    assert "ingrese la altitud media" in _texto_giandotti(at)       # sin valores inventados por defecto
+
+    at.number_input(key="cuenca__altitud_media").set_value(650.0)
+    at.number_input(key="cuenca__cota_salida").set_value(450.0).run()
+    esperado = (4 * 15.5 ** 0.5 + 1.5 * 8.2) / (0.8 * 200.0 ** 0.5)   # A, L por defecto; H = 200 m
+    assert f"{esperado:.2f} horas (H = 200 m)" in _texto_giandotti(at)
+    assert not at.error
+
+    at.number_input(key="cuenca__cota_salida").set_value(700.0).run()
+    assert any("mayor que la cota de la salida" in e.value for e in at.error)
+
+
 def test_cuenca_tabla_invalida_no_genera_ficha(dir_datos):
     at = _ejecutar("Parámetros de Cuenca (HEC-HMS)")
     assert len(at.table) == 1  # ficha HEC-HMS con la tabla de ejemplo válida

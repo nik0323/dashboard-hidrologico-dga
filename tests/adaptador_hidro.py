@@ -42,7 +42,9 @@ def _tc_cuenca(area_km2, longitud_km, modo, pendiente=None, desnivel_m=None):
         geom = cuenca.geometria_desde_pendiente(longitud_km, pendiente)
     else:
         geom = cuenca.geometria_desde_desnivel(longitud_km, desnivel_m)
-    tcs = cuenca.tiempos_concentracion(area_km2, longitud_km, geom)
+    # El original usaba el desnivel del cauce como H de Giandotti (hallazgo #3); los casos del golden
+    # validan la fórmula con esa misma entrada.
+    tcs = cuenca.tiempos_concentracion(area_km2, longitud_km, geom, geom.desnivel_m)
     return {
         "pendiente": geom.pendiente,
         "desnivel_m": geom.desnivel_m,
