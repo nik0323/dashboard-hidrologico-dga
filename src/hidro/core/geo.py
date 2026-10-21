@@ -2,40 +2,45 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 import numpy as np
 import numpy.typing as npt
 
 RADIO_TIERRA_KM = 6371
 
 
-def dms_a_decimal(dms_val: object) -> float:
+def dms_a_decimal(dms_val: object, tipo: Literal["lat", "lon"] | None = None) -> float:
     """Convierte coordenadas DGA (DMS concatenado, ej. 343810 = 34°38'10'') a grados decimales.
 
-    El signo es siempre negativo (hemisferio sur / oeste). Si el valor ya parece estar en
-    grados decimales (|v| <= 180 con parte fraccionaria) se respeta. Devuelve NaN si el valor
-    no es interpretable o tiene minutos/segundos fuera de rango.
-
-    ADVERTENCIA (hallazgo #13): un decimal entero como -34.0 se interpreta como DMS
-    (0°0'34''), y no se valida latitud <= 90°.
+    El signo es siempre negativo (hemisferio sur / oeste). Si |v| <= 180 el valor se toma como
+    grados decimales: un DMS con al menos 1° tiene 5 dígitos o más (10000), y un DMS menor
+    que 180 (menos de 2') no es una coordenada plausible (hallazgo #13). Devuelve NaN si el
+    valor no es interpretable, es 0 (coordenada faltante), tiene minutos/segundos fuera de
+    rango o, con `tipo="lat"`, supera 90°.
     """
     try:
         v = float(dms_val)
     except (TypeError, ValueError):
         return np.nan
-    if np.isnan(v):
+    if np.isnan(v) or v == 0:
         return np.nan
 
-    # Coordenada ya en grados decimales
-    if abs(v) <= 180 and v != int(v):
-        return -abs(v)
+    if abs(v) <= 180:
+        # Coordenada ya en grados decimales (con o sin parte fraccionaria)
+        decimal = -abs(v)
+    else:
+        val_str = str(abs(int(v))).zfill(6)
+        s = float(val_str[-2:])
+        m = float(val_str[-4:-2])
+        d = float(val_str[:-4])
+        if m >= 60 or s >= 60 or d > 180:
+            return np.nan
+        decimal = -(d + m / 60.0 + s / 3600.0)
 
-    val_str = str(abs(int(v))).zfill(6)
-    s = float(val_str[-2:])
-    m = float(val_str[-4:-2])
-    d = float(val_str[:-4])
-    if m >= 60 or s >= 60 or d > 180:
+    if tipo == "lat" and abs(decimal) > 90:
         return np.nan
-    return -(d + m / 60.0 + s / 3600.0)
+    return decimal
 
 
 def haversine_vectorizado(lat_ref: float, lon_ref: float, lat: npt.ArrayLike, lon: npt.ArrayLike):

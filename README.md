@@ -192,4 +192,9 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
   (`<` = límite de detección) y las censuradas se muestran por separado; no se sustituyen valores.
 - #12 (corregido): el nivel estático excluye las mediciones dinámicas y las de pozos embancados
   (columna `OBSERVACION`); los eventos de pozo seco se muestran en la serie.
-- #13: casos borde de `dms_a_decimal`.
+- #13 (corregido): en `dms_a_decimal`, |v| <= 180 se toma como grado decimal, 0 como coordenada
+  faltante y una latitud > 90° como inválida.
+
+Pendientes que requieren decisiones metodológicas: #9 (tabla exacta de KS / Lilliefors) y #10b
+(asimetría regional ponderada de LP-III). Antes de usar el módulo de normas en un informe, hay
+que verificar los límites de `config/normas.toml`.

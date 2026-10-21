@@ -66,8 +66,8 @@ def cargar_serie_dga(fuente: Fuente, columna_valor: str, conservar_sin_valor: bo
     df[c.VALOR] = pd.to_numeric(df[c.VALOR], errors="coerce")
 
     if "LAT" in df.columns and "LONG" in df.columns:
-        df[c.LAT] = df["LAT"].apply(dms_a_decimal)
-        df[c.LON] = df["LONG"].apply(dms_a_decimal)
+        df[c.LAT] = df["LAT"].apply(dms_a_decimal, tipo="lat")
+        df[c.LON] = df["LONG"].apply(dms_a_decimal, tipo="lon")
 
     n_antes = len(df)
     df = df.dropna(subset=[c.FECHA] if conservar_sin_valor else [c.FECHA, c.VALOR])

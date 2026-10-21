@@ -14,4 +14,6 @@ CAMBIOS_APROBADOS = {
                        "como faltantes (no 0) y solo días completos (24 h)."),
     "precipitaciones_sin_agromet": "Hallazgo #4: PMA y ajuste excluyen años con cobertura < 80 %.",
     "caudales": "Hallazgo #4: QMA excluye años con cobertura < 80 %.",
+    "dms_a_decimal": ("Hallazgo #13: |v| <= 180 siempre es grado decimal (-34.0 ya no es 0°0'34''), "
+                      "0 = coordenada faltante (NaN)."),
 }

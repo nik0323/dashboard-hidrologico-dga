@@ -341,6 +341,40 @@ def test_hallazgos_5_6_configurados():
     assert (s.agromet_desfase_horas, s.agromet_horas_min_dia) == (8, 24)
 
 
+# ---------- Hallazgo #13: casos borde de coordenadas ----------
+@pytest.mark.parametrize("valor, tipo, esperado", [
+    (-34.0, None, -34.0),                    # antes: 0°0'34'' = -0.0094
+    (71, None, -71.0),                       # entero <= 180 = grado decimal
+    (-34.636, None, -34.636),                # decimal con fracción: sin cambio
+    (343810, None, -(34 + 38 / 60 + 10 / 3600)),   # DMS: sin cambio
+    ("0701819  ", "lon", -(70 + 18 / 60 + 19 / 3600)),
+    (0, None, np.nan),                       # coordenada faltante
+    ("0", "lat", np.nan),
+    (953000, "lat", np.nan),                 # 95°30' no es latitud
+    (953000, "lon", -95.5),                  # pero sí longitud válida
+    (120.5, "lat", np.nan),                  # decimal > 90 en latitud
+])
+def test_hallazgo13_dms_a_decimal(valor, tipo, esperado):
+    from hidro.core.geo import dms_a_decimal
+    obtenido = dms_a_decimal(valor, tipo)
+    if np.isnan(esperado):
+        assert np.isnan(obtenido)
+    else:
+        assert obtenido == pytest.approx(esperado, abs=1e-12)
+
+
+def test_hallazgo13_cargar_serie_valida_latitud():
+    from hidro.io.lectura import cargar_serie_dga
+    csv = ("NOMBRE ESTACION,LAT,LONG,FECHA,VALOR\n"
+           "A,0343810,0710126,01/01/2020,1\n"
+           "B,0953000,0710126,01/01/2020,1\n"
+           "C,-34.0,-71.0,01/01/2020,1\n").encode("utf-8")
+    df = cargar_serie_dga(csv, "VALOR").set_index("NOMBRE ESTACION")
+    assert df.loc["A", "LAT_DEC"] == pytest.approx(-(34 + 38 / 60 + 10 / 3600))
+    assert np.isnan(df.loc["B", "LAT_DEC"]) and df.loc["B", "LON_DEC"] == pytest.approx(-(71 + 1 / 60 + 26 / 3600))
+    assert (df.loc["C", "LAT_DEC"], df.loc["C", "LON_DEC"]) == (-34.0, -71.0)
+
+
 def test_hallazgo7_factor_configurado():
     t = cargar_settings().tormenta
     assert (t.factor_intervalo_fijo, t.factor_min, t.factor_max) == (1.13, 1.0, 1.2)

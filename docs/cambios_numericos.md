@@ -334,6 +334,26 @@ demás estaciones no tienen registro DGA en 2021-2023, así que la correlación 
 y de todos modos no se imputan por la regla de cobertura (#1b). La ubicación de la estación AGROMET
 no viene en los archivos, por lo que no se usa un criterio de distancia.
 
+## Hallazgo #13: casos borde en la conversión de coordenadas
+
+**Problema.** `dms_a_decimal` trataba como DMS cualquier valor entero, así que −34.0 (grados
+decimales) se convertía en 0°0'34'' (−0.0094°). Además, 0 producía una coordenada válida (0°) y no
+se validaba que una latitud fuera ≤ 90°.
+
+**Corrección.** Si |v| ≤ 180, el valor es siempre grado decimal: un DMS real de al menos 1° tiene 5
+dígitos o más (10000), y un DMS menor que 180 equivaldría a menos de 2', lo que no es una
+coordenada plausible. El valor 0 se trata como coordenada faltante (NaN), y una latitud con
+|valor| > 90° es inválida.
+
+**Efecto sobre los datos reales.** Ninguno: en los 4 archivos DGA todas las coordenadas convertidas
+son idénticas antes y después, porque no hay valores decimales, ceros ni latitudes fuera de rango.
+Es una corrección preventiva para archivos de otras fuentes.
+
+**Observación (dato DGA, no corregido).** En `calidad_agua_historico.txt`, la estación "Estero
+natales en bocatoma" (XII Región) tiene LATITUD = 50141, es decir 5°01'41'', fuera de Chile.
+Probablemente corresponde a 51°41'. No afecta los análisis en torno a Lo Moscoso, que queda a más
+de 2.000 km.
+
 ## Hallazgo #10: elección de la distribución sin revisar la cola
 
 **Problema.** La tormenta de diseño usaba por defecto la distribución con menor estadístico D de
