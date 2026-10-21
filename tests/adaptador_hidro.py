@@ -84,7 +84,8 @@ MIGRADAS = {
     # io/
     "_leer_csv": lectura.leer_csv,
     "cargar_datos": lectura.cargar_serie_dga,
-    "cargar_agromet": lambda d: lectura.cargar_agromet(d, PATRON_AGROMET, QA_MAX_PRECIP_HORARIA),
+    "cargar_agromet": lambda d: lectura.cargar_agromet(d, PATRON_AGROMET, QA_MAX_PRECIP_HORARIA,
+                                                       _S.agromet_desfase_horas, _S.agromet_horas_min_dia),
     "imputar_con_agromet": lambda dga, agro: imputacion.imputar_con_agromet(
         dga, agro, cobertura_min_anual=_S.cobertura_min_anual),
     "serie_sin_agromet": imputacion.serie_sin_imputar,

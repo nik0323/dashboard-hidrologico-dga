@@ -11,7 +11,8 @@ import streamlit as st
 from hidro.contexto import Contexto
 from hidro.core import columnas as c
 from hidro.core import frecuencia, series, tormentas
-from hidro.io.imputacion import anios_bajo_cobertura, imputar_con_agromet, resumen_imputacion, serie_sin_imputar
+from hidro.io.imputacion import (N_MIN_CORRELACION, Correlacion, anios_bajo_cobertura, correlacion_con_agromet,
+                                 imputar_con_agromet, resumen_imputacion, serie_sin_imputar)
 from hidro.modulos.base import Modulo
 from hidro.modulos.registro import registrar
 from hidro.ui import cache, datos, red
@@ -47,7 +48,8 @@ class Precipitaciones(Modulo):
 
         # --- Imputación AGROMET (opcional y trazable) ---
         if ctx.dir_datos.is_dir():
-            df_agro, avisos_agro = cache.cargar_agromet(str(ctx.dir_datos), s.patron_agromet, s.qa_max_precip_horaria_mm)
+            df_agro, avisos_agro = cache.cargar_agromet(str(ctx.dir_datos), s.patron_agromet, s.qa_max_precip_horaria_mm,
+                                                        s.agromet_desfase_horas, s.agromet_horas_min_dia)
         else:
             df_agro, avisos_agro = pd.DataFrame(), []
         cobertura_min = s.cobertura_min_anual
@@ -63,6 +65,7 @@ class Precipitaciones(Modulo):
                     help="Rellena también fuera del periodo DGA y años sin registro DGA. Solo para comparar: "
                          "esos años quedan con PMA de otra estación.")
         anios_excluidos: list[int] = []
+        correlacion = correlacion_con_agromet(df_est, df_agro) if usar_agromet else None
         if usar_agromet and sin_restricciones:
             df_est = imputar_con_agromet(df_est, df_agro, extender=True, cobertura_min_anual=0.0)
         elif usar_agromet:
@@ -76,7 +79,7 @@ class Precipitaciones(Modulo):
             st.warning("Imputación sin restricciones: la serie incluye años completos tomados de AGROMET "
                        "(fuera del periodo DGA o sin registro DGA), que modifican n, momentos y cuantiles de diseño.")
         if usar_agromet:
-            self._panel_imputacion(df_est, avisos_agro, anios_excluidos, cobertura_min)
+            self._panel_imputacion(df_est, avisos_agro, anios_excluidos, cobertura_min, correlacion)
 
         pma_anual = series.maximos_anuales(df_est, s.cobertura_min_maximos)
         incompletos = series.anios_incompletos(df_est, s.cobertura_min_maximos)
@@ -103,10 +106,17 @@ class Precipitaciones(Modulo):
 
     @staticmethod
     def _panel_imputacion(df_est: pd.DataFrame, avisos: list[str], anios_excluidos: list[int],
-                          cobertura_min: float) -> None:
+                          cobertura_min: float, correlacion: Correlacion) -> None:
         r = resumen_imputacion(df_est)
         with st.expander(f"Imputación AGROMET: {r.n_imputados:,} días rellenados ({r.fraccion:.1%} de la serie)",
                          expanded=bool(r.anios_pma_imputada)):
+            # Hallazgo #2: representatividad de AGROMET para esta estación (diagnóstico, no bloquea)
+            if np.isnan(correlacion.r):
+                st.caption(f"Correlación diaria DGA–AGROMET: no evaluable ({correlacion.n_dias} días comunes; "
+                           f"se requieren al menos {N_MIN_CORRELACION}).")
+            else:
+                st.caption(f"Correlación diaria DGA–AGROMET: r = {correlacion.r:.2f} ({correlacion.n_dias} días comunes). "
+                           "Una correlación baja indica que AGROMET puede no representar la lluvia de esta estación.")
             if anios_excluidos:
                 st.info(f"Años no imputados por cobertura DGA < {cobertura_min:.0%}: "
                         + ", ".join(map(str, anios_excluidos)))

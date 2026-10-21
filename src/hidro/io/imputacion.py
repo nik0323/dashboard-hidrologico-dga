@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 from hidro.core import columnas as c
@@ -50,6 +51,28 @@ def serie_sin_imputar(df_estacion: pd.DataFrame) -> pd.DataFrame:
     df = df_estacion[[c.FECHA, c.ANIO, c.MES, c.MES_NOMBRE, c.VALOR]].copy()
     df[c.IMPUTADO] = False
     return df
+
+
+N_MIN_CORRELACION = 30
+
+
+@dataclass(frozen=True)
+class Correlacion:
+    """Correlación de Pearson [-] entre la precipitación diaria DGA y AGROMET en días comunes (hallazgo #2)."""
+
+    r: float
+    n_dias: int
+
+
+def correlacion_con_agromet(df_estacion: pd.DataFrame, df_agro: pd.DataFrame,
+                            n_min: int = N_MIN_CORRELACION) -> Correlacion:
+    """Pearson en días con dato en ambas series; r = NaN si hay menos de `n_min` días comunes o varianza nula."""
+    dga = df_estacion.groupby(df_estacion[c.FECHA].dt.normalize())[c.VALOR].mean()
+    agro = df_agro.set_index(c.FECHA)["Precip_mm"].dropna()
+    comun = dga.index.intersection(agro.index)
+    if len(comun) < n_min or dga[comun].std() == 0 or agro[comun].std() == 0:
+        return Correlacion(r=np.nan, n_dias=len(comun))
+    return Correlacion(r=float(np.corrcoef(dga[comun], agro[comun])[0, 1]), n_dias=len(comun))
 
 
 def anios_bajo_cobertura(df_estacion: pd.DataFrame, df_agro: pd.DataFrame, cobertura_min_anual: float) -> list[int]:

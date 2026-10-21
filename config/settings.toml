@@ -32,6 +32,13 @@ crecimiento_min_cola = 0.05
 [qa]
 max_precip_horaria_mm = 150.0   # mm/h, umbral QA/QC AGROMET
 
+[agromet]
+# Día pluviométrico: horas en (D + desfase, D + desfase + 24 h]. 8 h = lectura DGA 08-08 (hallazgo #5;
+# correlación con DGA CONVENTO VIEJO 2021-2023: r = 0.92 con 08-08 h contra 0.81 con 00-24 h).
+desfase_horas = 8
+# Días con menos horas válidas se descartan (hallazgo #6). 24 = solo días completos (sin supuesto de relleno).
+horas_min_dia = 24
+
 [imputacion]
 # Fracción mínima de días con registro DGA en el año calendario para rellenar sus vacíos con AGROMET.
 # [SUPUESTO: 0.80 aprobado por el usuario; mismo criterio de completitud previsto para el hallazgo #4]

@@ -28,10 +28,12 @@ def cargar_serie_dga(fuente: str | bytes, columna_valor: str, conservar_sin_valo
 
 
 @st.cache_data(show_spinner=False)
-def _agromet(directorio: str, patron: str, qa_max_mm_h: float, firma: tuple) -> tuple[pd.DataFrame, list[str]]:
-    return lectura.cargar_agromet(directorio, patron, qa_max_mm_h)
+def _agromet(directorio: str, patron: str, qa_max_mm_h: float, desfase_horas: int, horas_min_dia: int,
+             firma: tuple) -> tuple[pd.DataFrame, list[str]]:
+    return lectura.cargar_agromet(directorio, patron, qa_max_mm_h, desfase_horas, horas_min_dia)
 
 
-def cargar_agromet(directorio: str, patron: str, qa_max_mm_h: float) -> tuple[pd.DataFrame, list[str]]:
+def cargar_agromet(directorio: str, patron: str, qa_max_mm_h: float, desfase_horas: int,
+                   horas_min_dia: int) -> tuple[pd.DataFrame, list[str]]:
     firma = tuple(firma_archivo(f) for f in sorted(glob.glob(os.path.join(directorio, patron))))
-    return _agromet(directorio, patron, qa_max_mm_h, firma)
+    return _agromet(directorio, patron, qa_max_mm_h, desfase_horas, horas_min_dia, firma)

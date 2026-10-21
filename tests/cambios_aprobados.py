@@ -9,7 +9,9 @@ CAMBIOS_APROBADOS = {
     "imputar_con_agromet": (
         "Hallazgo #1: la imputación AGROMET ya no extiende la serie fuera del periodo DGA. "
         "Hallazgo #1b: no se imputan años con cobertura DGA < 80 %."),
-    "precipitaciones_con_agromet": "Hallazgos #1, #1b y #4: PMA, cuantiles y resumen de imputación.",
+    "precipitaciones_con_agromet": "Hallazgos #1, #1b, #4, #5 y #6: PMA, cuantiles y resumen de imputación.",
+    "cargar_agromet": ("Hallazgo #5: día pluviométrico 08-08 h. Hallazgo #6: horas faltantes y rechazadas por QA "
+                       "como faltantes (no 0) y solo días completos (24 h)."),
     "precipitaciones_sin_agromet": "Hallazgo #4: PMA y ajuste excluyen años con cobertura < 80 %.",
     "caudales": "Hallazgo #4: QMA excluye años con cobertura < 80 %.",
 }

@@ -63,6 +63,8 @@ class Settings:
     t_cola: tuple[int, int]
     crecimiento_min_cola: float
     qa_max_precip_horaria_mm: float
+    agromet_desfase_horas: int
+    agromet_horas_min_dia: int
     cobertura_min_anual: float
     cobertura_min_maximos: float
     tormenta: Tormenta
@@ -98,6 +100,8 @@ def cargar_settings(ruta: str | os.PathLike | None = None) -> Settings:
         t_cola=tuple(crudo["frecuencia"]["t_cola"]),
         crecimiento_min_cola=float(crudo["frecuencia"]["crecimiento_min_cola"]),
         qa_max_precip_horaria_mm=float(crudo["qa"]["max_precip_horaria_mm"]),
+        agromet_desfase_horas=int(crudo["agromet"]["desfase_horas"]),
+        agromet_horas_min_dia=int(crudo["agromet"]["horas_min_dia"]),
         cobertura_min_anual=float(crudo["imputacion"]["cobertura_min_anual"]),
         cobertura_min_maximos=float(crudo["maximos_anuales"]["cobertura_min_anual"]),
         tormenta=Tormenta(**{k: tuple(v) if isinstance(v, list) else v for k, v in crudo["tormenta"].items()}),
@@ -126,6 +130,10 @@ def _validar(s: Settings) -> None:
         errores.append("frecuencia.t_cola debe ser [T_inf, T_sup] creciente y contenido en t_objetivo.")
     if not 0 <= s.crecimiento_min_cola < 1:
         errores.append("frecuencia.crecimiento_min_cola debe estar en [0, 1).")
+    if not -23 <= s.agromet_desfase_horas <= 23:
+        errores.append("agromet.desfase_horas debe estar entre -23 y 23.")
+    if not 1 <= s.agromet_horas_min_dia <= 24:
+        errores.append("agromet.horas_min_dia debe estar entre 1 y 24.")
     if not 0 <= s.cobertura_min_anual <= 1:
         errores.append("imputacion.cobertura_min_anual debe estar en [0, 1].")
     if not 0 <= s.cobertura_min_maximos <= 1:

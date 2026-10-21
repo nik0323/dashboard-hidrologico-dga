@@ -73,6 +73,8 @@ def test_precipitaciones_muestra_cuantiles_y_hietograma(dir_datos):
     textos = " ".join(m.value for m in at.markdown) + " ".join(i.value for i in at.info)
     assert "Precipitación Base" in textos
     assert at.selectbox(key="precipitaciones__dist__ESTACION CERCANA").value in ("Gumbel", "Log-Pearson III", "Log-Normal")
+    assert any("Correlación diaria DGA–AGROMET" in x.value for x in at.caption)                  # hallazgo #2
+    assert any("08:00 de la fecha a 08:00 del día siguiente" in x.value for x in at.caption)     # hallazgo #5
     assert at.checkbox(key="precipitaciones__usar_agromet").value is True
 
 

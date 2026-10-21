@@ -286,6 +286,54 @@ cambios:
 En la mayoría de los casos el original atribuía al acuífero abatimientos que eran el cono de
 bombeo del propio pozo, lo que sobrestimaba la amplitud de fluctuación del nivel freático.
 
+## Hallazgos #5 y #6: agregación diaria de AGROMET
+
+**Problema #5.** AGROMET se sumaba por día calendario (00-24 h), mientras que el pluviómetro DGA
+se lee a las 08:00. **Problema #6.** Las horas sin dato se sumaban como 0 mm y los registros
+rechazados por QA/QC (> 150 mm/h) se reemplazaban por 0: un día con horas faltantes o con un dato
+erróneo se trataba como total y seco.
+
+**Verificación empírica del desfase.** Correlación de Pearson entre la precipitación diaria de DGA
+CONVENTO VIEJO (única estación a <= 30 km con registro DGA en 2021-2023) y AGROMET Placilla
+Chacarilla, con QA aplicado y solo días AGROMET completos:
+
+| Ventana diaria AGROMET para la fecha D | r | días |
+|---|---|---|
+| D 00:00 – D+1 00:00 (calendario, original) | 0.806 | 1011 |
+| **D 08:00 – D+1 08:00** | **0.916** | 1016 |
+| D 16:00 – D+1 16:00 | 0.798 | 1014 |
+| D −08:00 – D 16:00 | 0.530 | 1014 |
+
+La DGA asigna a la fecha D la lluvia entre las 08:00 de D y las 08:00 de D+1.
+
+**Corrección.**
+- Cada registro horario con marca t acumula la hora (t − 1 h, t], y el día D suma las horas en
+  (D 08:00, D+1 08:00] (`[agromet].desfase_horas = 8`).
+- Las horas faltantes y las rechazadas por QA quedan como faltantes, y solo se usan días con 24 h
+  válidas (`[agromet].horas_min_dia = 24`, sin supuesto de relleno).
+- Si una hora se repite entre archivos, se conserva la del primero en orden alfabético.
+
+**Efecto.**
+
+| AGROMET diario | Días | Total [mm] | Máximo diario [mm] |
+|---|---|---|---|
+| Original | 1094 | 1234.7 | 83.8 |
+| Corregido | 1031 | 1200.3 | 82.4 |
+
+Se descartan 64 días incompletos y se anulan 2 registros horarios (344 y 497 mm/h, ambos a las
+00:00 de julio de 2023). **Ningún cuantil cambia**: tras las correcciones #1 y #1b, la única
+imputación vigente son 15 días aislados en CONVENTO VIEJO (el mismo número que antes), que no
+determinan ninguna PMA.
+
+## Hallazgo #2: representatividad de AGROMET (diagnóstico)
+
+El panel de imputación muestra la correlación diaria entre la estación DGA y AGROMET en los días
+comunes (mínimo 30 días). **No bloquea la imputación**, porque fijar un umbral sería un supuesto no
+aprobado. Con los datos actuales solo CONVENTO VIEJO tiene días comunes (r = 0.92, n = 1016). Las
+demás estaciones no tienen registro DGA en 2021-2023, así que la correlación queda "no evaluable",
+y de todos modos no se imputan por la regla de cobertura (#1b). La ubicación de la estación AGROMET
+no viene en los archivos, por lo que no se usa un criterio de distancia.
+
 ## Hallazgo #10: elección de la distribución sin revisar la cola
 
 **Problema.** La tormenta de diseño usaba por defecto la distribución con menor estadístico D de

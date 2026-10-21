@@ -273,6 +273,74 @@ def test_hallazgo12_conservar_filas_sin_valor():
     assert df["OBSERVACION"].fillna("").tolist() == ["", "Seco"]                    # fecha inválida sigue fuera
 
 
+# ---------- Hallazgos #5 y #6: día pluviométrico AGROMET 08-08 h, faltantes y QA ----------
+def _escribir_horario(directorio, lluvias, inicio="2020-01-01 00:00", fin="2020-01-04 23:00", omitir=(), nombre="a"):
+    """Archivo AGROMET horario con 0 mm salvo en `lluvias` {timestamp: mm}; `omitir` = horas sin registro."""
+    filas = ['"Fecha Hora","Precipitación horaria"']
+    for t in pd.date_range(inicio, fin, freq="h"):
+        if t in [pd.Timestamp(o) for o in omitir]:
+            continue
+        filas.append(f'"{t:%d/%m/%Y %H:%M}",{lluvias.get(t.strftime("%Y-%m-%d %H:%M"), 0.0)}')
+    (directorio / f"agromet_Placilla {nombre}.csv").write_text("\n".join(filas) + "\n", encoding="utf-8")
+
+
+def _diario(directorio, **kw):
+    from hidro.io.lectura import cargar_agromet
+    df, avisos = cargar_agromet(str(directorio), "*agromet_Placilla*.csv", 150.0, **kw)
+    return df.set_index("FECHA_DT")["Precip_mm"], avisos
+
+
+def test_hallazgo5_ventana_08_08(tmp_path):
+    # Registro t acumula (t-1h, t]. Día D = (D 08:00, D+1 08:00]
+    _escribir_horario(tmp_path, {"2020-01-02 08:00": 1.0,    # cierra la hora 07-08 del 02 -> día 01
+                                 "2020-01-02 09:00": 2.0,    # 08-09 del 02 -> día 02
+                                 "2020-01-03 08:00": 4.0})   # 07-08 del 03 -> día 02
+    d, _ = _diario(tmp_path)
+    assert d.index.min() == pd.Timestamp("2020-01-01") and d.index.max() == pd.Timestamp("2020-01-03")
+    assert (d.loc["2020-01-01"], d.loc["2020-01-02"], d.loc["2020-01-03"]) == (1.0, 6.0, 0.0)
+    # 31/12 (solo 00-08 del 01) y 04/01 (falta 05/01 00-08) quedan incompletos y se descartan
+    calendario, _ = _diario(tmp_path, desfase_horas=0)
+    assert (calendario.loc["2020-01-02"], calendario.loc["2020-01-03"]) == (3.0, 4.0)   # 00-24 del original
+
+
+def test_hallazgo6_faltantes_y_qa_no_son_cero(tmp_path):
+    _escribir_horario(tmp_path, {"2020-01-02 12:00": 497.0, "2020-01-03 12:00": 5.0},
+                      omitir=["2020-01-03 20:00"])
+    d, avisos = _diario(tmp_path)
+    assert pd.Timestamp("2020-01-02") not in d.index      # hora rechazada por QA -> día incompleto
+    assert pd.Timestamp("2020-01-03") not in d.index      # hora faltante -> día incompleto
+    assert d.loc["2020-01-01"] == 0.0                     # día completo y seco sigue siendo 0 mm
+    assert any("1 registros > 150 mm/h" in a for a in avisos)
+    assert any("días AGROMET con menos de 24 h" in a for a in avisos)
+    flexible, _ = _diario(tmp_path, horas_min_dia=23)
+    assert flexible.loc["2020-01-03"] == 5.0 and flexible.loc["2020-01-02"] == 0.0
+
+
+def test_hallazgo6_hora_repetida_entre_archivos(tmp_path):
+    _escribir_horario(tmp_path, {"2020-01-02 12:00": 1.0}, nombre="a")
+    _escribir_horario(tmp_path, {"2020-01-02 12:00": 9.0}, nombre="b")
+    d, _ = _diario(tmp_path)
+    assert d.loc["2020-01-02"] == 1.0                     # se conserva el primer archivo (orden alfabético)
+
+
+# ---------- Hallazgo #2: correlación DGA–AGROMET (diagnóstico) ----------
+def test_hallazgo2_correlacion():
+    from hidro.io.imputacion import correlacion_con_agromet
+    dias = pd.date_range("2020-01-01", periods=60)
+    lluvia = np.where(np.arange(60) % 5 == 0, np.arange(60) % 17, 0.0)
+    dga = pd.DataFrame({"FECHA_DT": dias, "Valor_Registrado": lluvia})
+    agro = pd.DataFrame({"FECHA_DT": dias, "Precip_mm": 2 * lluvia + 1})
+    r = correlacion_con_agromet(dga, agro)
+    assert r.n_dias == 60 and r.r == pytest.approx(1.0)
+    pocos = correlacion_con_agromet(dga.head(10), agro)
+    assert pocos.n_dias == 10 and np.isnan(pocos.r)
+
+
+def test_hallazgos_5_6_configurados():
+    s = cargar_settings()
+    assert (s.agromet_desfase_horas, s.agromet_horas_min_dia) == (8, 24)
+
+
 def test_hallazgo7_factor_configurado():
     t = cargar_settings().tormenta
     assert (t.factor_intervalo_fijo, t.factor_min, t.factor_max) == (1.13, 1.0, 1.2)

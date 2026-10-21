@@ -7,6 +7,7 @@ import io
 import logging
 import os
 
+import numpy as np
 import pandas as pd
 
 from hidro.core import columnas as c
@@ -75,16 +76,26 @@ def cargar_serie_dga(fuente: Fuente, columna_valor: str, conservar_sin_valor: bo
     return df
 
 
-def cargar_agromet(directorio: str | os.PathLike, patron: str, qa_max_mm_h: float) -> tuple[pd.DataFrame, list[str]]:
+DESFASE_DIA_PLUVIOMETRICO_H = 8
+HORAS_MIN_DIA = 24
+
+
+def cargar_agromet(directorio: str | os.PathLike, patron: str, qa_max_mm_h: float,
+                   desfase_horas: int = DESFASE_DIA_PLUVIOMETRICO_H,
+                   horas_min_dia: int = HORAS_MIN_DIA) -> tuple[pd.DataFrame, list[str]]:
     """Lee estaciones AGROMET horarias, aplica QA/QC y agrega a precipitación diaria [mm].
 
-    Los registros horarios > `qa_max_mm_h` [mm/h] se anulan. Si un día aparece en varios
-    archivos se conserva el primero. Devuelve (DataFrame FECHA_DT / Precip_mm, advertencias).
+    Cada registro horario con marca t acumula la hora (t − 1 h, t]. El día pluviométrico D
+    suma las horas en (D + desfase, D + desfase + 24 h], es decir de 08:00 de D a 08:00 de D+1
+    con el desfase por defecto, que es la ventana de lectura de los pluviómetros DGA (hallazgo #5;
+    respaldado por la correlación con DGA CONVENTO VIEJO: r = 0.92 contra 0.81 con 00-24 h).
 
-    ADVERTENCIA (hallazgos #5 y #6): día calendario 00-24 h (DGA usa 08-08 h), horas sin
-    dato se suman como 0 mm y los valores rechazados por QA se reemplazan por 0, no por NaN.
+    Las horas sin dato y los registros > `qa_max_mm_h` [mm/h] quedan como faltantes, no como 0.
+    Solo se conservan los días con al menos `horas_min_dia` horas válidas (hallazgo #6). Si una
+    misma hora aparece en varios archivos, se conserva la del primero en orden alfabético.
+    Devuelve (DataFrame FECHA_DT / Precip_mm, advertencias).
     """
-    archivos = glob.glob(os.path.join(directorio, patron))
+    archivos = sorted(glob.glob(os.path.join(directorio, patron)))
     advertencias = []
     lista = []
     for archivo in archivos:
@@ -102,21 +113,30 @@ def cargar_agromet(directorio: str | os.PathLike, patron: str, qa_max_mm_h: floa
             advertencias.append(f"{nombre}: sin columna de precipitación, se omite.")
             continue
 
-        df[c.FECHA] = pd.to_datetime(df[col_fecha], format="%d/%m/%Y %H:%M", errors="coerce")
-        df["Precip_mm"] = pd.to_numeric(df[col_precip], errors="coerce").fillna(0)
-
-        n_qa = int((df["Precip_mm"] > qa_max_mm_h).sum())
+        horario = pd.DataFrame({
+            "t": pd.to_datetime(df[col_fecha], format="%d/%m/%Y %H:%M", errors="coerce"),
+            "p": pd.to_numeric(df[col_precip], errors="coerce"),
+        })
+        n_qa = int((horario["p"] > qa_max_mm_h).sum())
         if n_qa:
             advertencias.append(f"{nombre}: {n_qa} registros > {qa_max_mm_h:.0f} mm/h anulados por QA/QC.")
-        df.loc[df["Precip_mm"] > qa_max_mm_h, "Precip_mm"] = 0.0
-
-        df = df.dropna(subset=[c.FECHA])
-        diario = df.groupby(df[c.FECHA].dt.normalize())["Precip_mm"].sum().reset_index()
-        lista.append(diario)
+        horario.loc[horario["p"] > qa_max_mm_h, "p"] = np.nan
+        lista.append(horario.dropna(subset=["t"]))
 
     if not lista:
         return pd.DataFrame(columns=[c.FECHA, "Precip_mm"]), advertencias
 
-    total = pd.concat(lista, ignore_index=True).sort_values(c.FECHA)
-    total = total.drop_duplicates(subset=[c.FECHA])
+    horario = pd.concat(lista, ignore_index=True).drop_duplicates(subset=["t"], keep="first")
+    dia = (horario["t"] - pd.Timedelta(hours=desfase_horas) - pd.Timedelta(seconds=1)).dt.normalize()
+    agrupado = horario.groupby(dia)["p"]
+    diario = pd.DataFrame({"Precip_mm": agrupado.sum(min_count=1), "horas": agrupado.count()})
+    completos = diario["horas"] >= horas_min_dia
+    n_incompletos = int((~completos).sum())
+    if n_incompletos:
+        advertencias.append(f"{n_incompletos} días AGROMET con menos de {horas_min_dia} h válidas se descartan "
+                            "(no se usan para imputar).")
+    advertencias.append(f"Día pluviométrico AGROMET: {desfase_horas:02d}:00 de la fecha a {desfase_horas:02d}:00 "
+                        "del día siguiente (ventana de lectura DGA).")
+    total = (diario.loc[completos, ["Precip_mm"]].rename_axis(c.FECHA).reset_index()
+             .sort_values(c.FECHA, ignore_index=True))
     return total, advertencias
