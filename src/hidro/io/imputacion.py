@@ -10,18 +10,22 @@ from hidro.core import columnas as c
 from hidro.io.normalizacion import agregar_columnas_fecha
 
 
-def imputar_con_agromet(df_estacion: pd.DataFrame, df_agro: pd.DataFrame) -> pd.DataFrame:
+def imputar_con_agromet(df_estacion: pd.DataFrame, df_agro: pd.DataFrame, extender: bool = False) -> pd.DataFrame:
     """Rellena días sin dato de la estación DGA con AGROMET [mm], alineando por fecha.
 
-    Días DGA repetidos se promedian. Devuelve una serie diaria con columna booleana IMPUTADO.
+    Por defecto solo se rellenan vacíos internos: días entre la primera y la última fecha
+    con registro DGA. Con `extender=True` también se agregan días AGROMET antes y después
+    del periodo DGA (comportamiento del dashboard original, hallazgo #1); esos años quedan
+    con PMA proveniente de otra estación y alteran n, momentos y cuantiles.
 
-    ADVERTENCIA (hallazgo #1): el índice es la UNIÓN de fechas DGA y AGROMET, por lo que
-    la serie se extiende fuera del periodo de registro DGA, no solo rellena vacíos internos.
+    Días DGA repetidos se promedian. Devuelve una serie diaria con columna booleana IMPUTADO.
     """
     serie = df_estacion.groupby(df_estacion[c.FECHA].dt.normalize())[c.VALOR].mean()
     agro = df_agro.set_index(c.FECHA)["Precip_mm"]
 
     indice = serie.index.union(agro.index)
+    if not extender:
+        indice = indice[(indice >= serie.index.min()) & (indice <= serie.index.max())]
     serie = serie.reindex(indice)
     faltantes = serie.isna()
     serie = serie.fillna(agro.reindex(indice))

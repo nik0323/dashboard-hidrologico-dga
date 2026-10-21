@@ -96,12 +96,19 @@ python -m pytest -q
 
 - `test_regresion_original.py`: el original congelado (`tests/_original/`) sigue produciendo las
   salidas guardadas en `tests/golden/`.
-- `test_regresion_hidro.py`: el paquete reproduce esas salidas con tolerancia absoluta 1e-9.
+- `test_regresion_hidro.py`: el paquete reproduce sus propias salidas congeladas
+  (`tests/golden/salidas_hidro.pkl`) con tolerancia absoluta 1e-9, y **solo difiere del original
+  en los casos listados en `tests/cambios_aprobados.py`**.
+- `test_correcciones.py`: propiedades de cada corrección aprobada.
 - `test_config.py`, `test_registro.py`, `test_ui_cache.py`, `test_app.py` (los 5 módulos con
   `streamlit.testing.AppTest` sobre datos sintéticos).
 
-Si se aprueba un cambio numérico: implementarlo, regenerar el golden con
-`python tests/generar_golden.py` y hacer commit aparte, explicando el cambio.
+Para aplicar un cambio numérico aprobado:
+1. Implementarlo y agregar sus tests en `test_correcciones.py`.
+2. Registrar los casos afectados en `tests/cambios_aprobados.py`.
+3. Regenerar el golden del paquete con `python tests/generar_golden.py --hidro`. El golden del
+   original no se regenera.
+4. Documentar el antes y después en `docs/cambios_numericos.md` y hacer un commit aparte.
 
 ## Migración desde `dashboard_dga.py`
 
@@ -149,9 +156,11 @@ Los nombres de test en la tercera columna son los casos de `tests/casos.py`, eje
 ## Limitaciones técnicas conocidas
 
 Se conservan a propósito para no cambiar resultados sin revisión; cada una está marcada con
-`ADVERTENCIA (hallazgo #n)` en el código:
+`ADVERTENCIA (hallazgo #n)` en el código. Las correcciones ya aplicadas están en
+`docs/cambios_numericos.md`.
 
-- #1: la imputación AGROMET extiende la serie fuera del periodo de registro DGA.
+- #1 (corregido): la imputación AGROMET ya no extiende la serie fuera del periodo DGA. Sigue
+  pendiente que rellene años completos sin registro DGA dentro del periodo.
 - #2: AGROMET se aplica a cualquier estación sin importar la distancia.
 - #3: Giandotti usa el desnivel del cauce en vez de la altitud media de la cuenca sobre la salida.
 - #4: los máximos anuales no verifican la completitud de cada año.

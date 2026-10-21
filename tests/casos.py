@@ -18,6 +18,7 @@ import pandas as pd
 DIR_TESTS = os.path.dirname(os.path.abspath(__file__))
 DIR_ORIGINAL = os.path.join(DIR_TESTS, "_original")
 RUTA_GOLDEN = os.path.join(DIR_TESTS, "golden", "salidas_original.pkl")
+RUTA_GOLDEN_HIDRO = os.path.join(DIR_TESTS, "golden", "salidas_hidro.pkl")
 ATOL = 1e-9
 
 CASOS = {}

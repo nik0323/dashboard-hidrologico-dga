@@ -50,14 +50,26 @@ class Precipitaciones(Modulo):
             df_agro, avisos_agro = cache.cargar_agromet(str(ctx.dir_datos), s.patron_agromet, s.qa_max_precip_horaria_mm)
         else:
             df_agro, avisos_agro = pd.DataFrame(), []
-        usar_agromet = False
+        usar_agromet = extender = False
         if not df_agro.empty:
             usar_agromet = st.sidebar.checkbox(
                 "Rellenar vacíos con AGROMET", value=True, key=ctx.key("usar_agromet"),
-                help="Completa los días sin registro DGA con la estación auxiliar AGROMET.")
-        df_est = imputar_con_agromet(df_est, df_agro) if usar_agromet else serie_sin_imputar(df_est)
+                help="Completa los días sin registro DGA, dentro del periodo de registro de la estación, "
+                     "con la estación auxiliar AGROMET.")
+            if usar_agromet:
+                extender = st.sidebar.checkbox(
+                    "Extender serie fuera del periodo DGA", value=False, key=ctx.key("extender_agromet"),
+                    help="Agrega días AGROMET antes y después del registro DGA. Esos años quedan con PMA "
+                         "de otra estación; no recomendado para cuantiles de diseño.")
+        if usar_agromet:
+            df_est = imputar_con_agromet(df_est, df_agro, extender=extender)
+        else:
+            df_est = serie_sin_imputar(df_est)
 
         st.header(f"2. Análisis Hidrometeorológico: {estacion}")
+        if extender:
+            st.warning("La serie incluye días AGROMET fuera del periodo de registro DGA: los años agregados "
+                       "provienen de otra estación y modifican n, momentos y cuantiles de diseño.")
         if usar_agromet:
             self._panel_imputacion(df_est, avisos_agro)
 
