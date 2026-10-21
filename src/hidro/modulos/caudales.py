@@ -59,6 +59,9 @@ class Caudales(Modulo):
 
         with tab_crecidas:
             justificacion("Análisis de los caudales máximos diarios anuales (QMA) para modelaciones hidráulicas y cálculo de cota de inundación.")
+            st.warning("El QMA se calcula con caudales **medios diarios**: subestima el caudal máximo instantáneo, "
+                       "que es el que controla la cota de inundación. Para diseño hidráulico, use registros "
+                       "instantáneos o un coeficiente de paso medio diario → instantáneo justificado para la cuenca.")
             cobertura_min = ctx.settings.cobertura_min_maximos
             incompletos = series.anios_incompletos(df_est, cobertura_min)
             if incompletos:

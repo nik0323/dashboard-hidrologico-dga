@@ -225,6 +225,22 @@ def test_hallazgo3_altura_invalida(media, salida):
         cuenca.altura_media_sobre_salida(media, salida)
 
 
+# ---------- Hallazgo #11: marcas de calidad DGA ----------
+def test_hallazgo11_clasifica_marcas_dga():
+    from hidro.core.calidad import BAJO_LD, CUANTIFICADO, SIN_MARCA, SOBRE_RANGO, clasificar_marca, resumen_marcas
+    df = pd.DataFrame({"CALIDAD": ["=", "<", " ", None, ">", "D", "<"], "VALOR": range(7)})
+    cat = clasificar_marca(df)
+    assert cat.tolist() == [CUANTIFICADO, BAJO_LD, SIN_MARCA, SIN_MARCA, SOBRE_RANGO, "Otra marca (D)", BAJO_LD]
+    r = resumen_marcas(cat).set_index("Marca")
+    assert r.loc[BAJO_LD, "Muestras"] == 2 and r.loc[BAJO_LD, "%"] == pytest.approx(28.6)
+    assert r["Muestras"].sum() == 7
+
+
+def test_hallazgo11_sin_columna_calidad():
+    from hidro.core.calidad import SIN_MARCA, clasificar_marca
+    assert (clasificar_marca(pd.DataFrame({"VALOR": [1.0, 2.0]})) == SIN_MARCA).all()
+
+
 def test_hallazgo7_factor_configurado():
     t = cargar_settings().tormenta
     assert (t.factor_intervalo_fijo, t.factor_min, t.factor_max) == (1.13, 1.0, 1.2)

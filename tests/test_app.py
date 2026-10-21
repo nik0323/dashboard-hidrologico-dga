@@ -12,13 +12,25 @@ from hidro.config import RAIZ_PROYECTO, cargar_settings
 MODULOS = ["Precipitaciones", "Parámetros de Cuenca (HEC-HMS)", "Caudales", "Aguas Subterráneas", "Calidad Geoquímica"]
 
 
+def _calidad_con_marcas():
+    """Datos de calidad con marca DGA: en Sulfato, 1 de cada 3 muestras '<' (límite de detección), el resto '='."""
+    lineas, n_sulfato = [], 0
+    for linea in csv_calidad().decode("utf-8").splitlines():
+        if ",Sulfato,7350," in linea and ", ,mg/l" in linea:
+            marca = "<" if n_sulfato % 3 == 0 else "="
+            linea = linea.replace(", ,mg/l", f",{marca},mg/l")
+            n_sulfato += 1
+        lineas.append(linea)
+    return ("\n".join(lineas) + "\n").encode("utf-8")
+
+
 @pytest.fixture
 def dir_datos(tmp_path, monkeypatch):
     archivos = cargar_settings().archivos
     # 14 años con 5 % de vacíos: suficientes años completos para el ajuste (hallazgo #4)
     precip = csv_precipitaciones(inicio_cercana="2000-01-01", fin_cercana="2013-12-31", faltantes=0.05)
     contenidos = {"precipitaciones": precip, "caudales": csv_caudales(),
-                  "pozos": csv_pozos(), "calidad": csv_calidad()}
+                  "pozos": csv_pozos(), "calidad": _calidad_con_marcas()}
     for clave, contenido in contenidos.items():
         (tmp_path / archivos[clave]).write_bytes(contenido)
     escribir_agromet(tmp_path)
@@ -111,6 +123,26 @@ def test_hallazgo3_giandotti_pide_altura_media_y_la_usa(dir_datos):
 
     at.number_input(key="cuenca__cota_salida").set_value(700.0).run()
     assert any("mayor que la cota de la salida" in e.value for e in at.error)
+
+
+def test_hallazgo8_aviso_qma_medio_diario(dir_datos):
+    at = _ejecutar("Caudales")
+    assert any("caudales **medios diarios**" in w.value for w in at.warning)
+
+
+def test_hallazgo11_calidad_separa_censurados(dir_datos):
+    at = _ejecutar("Calidad Geoquímica")
+    at.selectbox(key="calidad__parametro").set_value("Sulfato").run()
+    assert not at.exception
+    aviso = next(w.value for w in at.warning if "censuradas" in w.value)
+    n_cens, n_total = map(int, re.match(r"(\d+) de (\d+) muestras", aviso).groups())
+    assert n_cens > 0 and n_cens < n_total
+    resumen = at.dataframe[0].value.set_index("Marca")
+    assert resumen.loc["Bajo límite de detección (<)", "Muestras"] == n_cens
+    assert resumen["Muestras"].sum() == n_total
+
+    at.selectbox(key="calidad__parametro").set_value("Ph").run()   # sin marcas '<': sin aviso
+    assert not any("censuradas" in w.value for w in at.warning)
 
 
 def test_cuenca_tabla_invalida_no_genera_ficha(dir_datos):

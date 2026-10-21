@@ -192,6 +192,59 @@ California = 1.11 h):
 **Alcance en la ficha HEC-HMS.** El tc adoptado por defecto sigue siendo Kirpich, así que la ficha
 solo cambia si el usuario adopta el valor de Giandotti.
 
+## Hallazgo #8: el QMA se calcula con caudal medio diario (aviso, sin cambio numérico)
+
+El QMA del módulo de caudales es el máximo anual de los caudales **medios diarios**, que subestima
+el caudal máximo instantáneo, es decir, el que controla la cota de inundación. Ahora la pestaña de
+crecidas lo advierte. No se aplicó ningún coeficiente de conversión porque depende de la cuenca y
+requeriría un supuesto adicional.
+
+## Hallazgo #11: muestras de calidad censuradas graficadas como concentraciones medidas
+
+**Problema (diagnóstico corregido).** En el análisis inicial se supuso que los valores censurados
+venían en `VALOR` como texto ("<0.01") y se descartaban. En `calidad_agua_historico.txt`, en
+cambio, `VALOR` siempre es numérico y la censura viene en la columna `CALIDAD`:
+
+| Marca `CALIDAD` | Filas | Interpretación |
+|---|---|---|
+| `=` | 849.765 | valor cuantificado |
+| `<` | 441.594 (28.5 %) | bajo el límite de detección: `VALOR` es el límite, no una medición |
+| (vacía) | 256.777 | sin marca |
+| `>` | 546 | sobre el rango analítico |
+| `D`, `?`, `*`, `-`, `E`, `0` | 872 | códigos no documentados |
+
+El dashboard ignoraba la columna `CALIDAD` y graficaba todos los valores como concentraciones
+medidas. En la práctica, los límites de detección aparecían como si fueran mediciones.
+
+**Corrección (sin supuestos ni cambios de valores).** Cada muestra se clasifica según su marca
+(`core/calidad.clasificar_marca`). La serie temporal muestra cada marca con un símbolo distinto,
+y la línea une solo las muestras no censuradas. El box plot separa las marcas, y un aviso y una
+tabla informan cuántas muestras son censuradas. No se sustituye ningún valor (LD, LD/2, etc.),
+porque esa elección es metodológica y queda a criterio del análisis.
+
+**Efecto sobre los datos reales** (estaciones a <= 60 km de Lo Moscoso: 79.873 muestras, 28.6 %
+censuradas). Parámetros con mayor proporción de muestras censuradas (con al menos 50 muestras):
+
+| Parámetro | Muestras | % censuradas |
+|---|---|---|
+| Selenio disuelto | 1.059 | 99.7 |
+| Plata total | 2.005 | 98.5 |
+| Cadmio total | 2.099 | 97.4 |
+| Cromo hexavalente disuelto | 946 | 94.4 |
+| Selenio total | 792 | 93.4 |
+| Mercurio total | 2.028 | 92.9 |
+| Cobalto total | 1.878 | 92.2 |
+| Níquel total | 2.058 | 89.8 |
+| Plomo total | 2.081 | 88.4 |
+| Fosfato | 140 | 85.0 |
+
+**Implicancia.** Para estos metales, las "series" del dashboard original eran casi enteramente
+límites de detección. Una comparación con normas (por ejemplo, NCh 409 o NCh 1333) debe usar solo
+valores cuantificados, o tratar explícitamente los censurados. Un límite de detección por sobre la
+norma no indica cumplimiento ni incumplimiento.
+
+**Sin cambio:** en los datos revisados, ningún parámetro tiene más de una unidad.
+
 ## Hallazgo #10: elección de la distribución sin revisar la cola
 
 **Problema.** La tormenta de diseño usaba por defecto la distribución con menor estadístico D de

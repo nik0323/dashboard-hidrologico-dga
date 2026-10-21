@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
 from hidro.contexto import Contexto
 from hidro.core import columnas as c
-from hidro.core.calidad import filtrar_parametro, parametros_disponibles
+from hidro.core.calidad import (COL_CATEGORIA, CENSURADAS, clasificar_marca, filtrar_parametro,
+                                parametros_disponibles, resumen_marcas)
 from hidro.io.normalizacion import columna_parametro
 from hidro.modulos.base import Modulo
 from hidro.modulos.registro import registrar
 from hidro.ui import datos, red
-from hidro.ui.componentes import encabezado, grafico, justificacion
+from hidro.ui.componentes import encabezado, grafico, justificacion, tabla
 
 
 @registrar
@@ -45,18 +48,35 @@ class Calidad(Modulo):
         parametro = st.selectbox("Seleccione el componente o indicador fisicoquímico a evaluar:",
                                  parametros_disponibles(df_est, col_param), key=ctx.key("parametro"))
         df_param, unidad = filtrar_parametro(df_est, col_param, parametro)
+        df_param = df_param.assign(**{COL_CATEGORIA: clasificar_marca(df_param)}).sort_values(c.FECHA)
+        self._aviso_marcas(df_param)
 
+        etiquetas = {c.FECHA: "Fecha de Muestreo", c.VALOR: f"Concentración ({unidad})", COL_CATEGORIA: "Marca DGA"}
         tab_evo, tab_dist = st.tabs(["Evolución Temporal del Analito", "Distribución de Concentración"])
         with tab_evo:
             justificacion(f"Seguimiento de la evolución temporal del parámetro {parametro} correlacionado con ciclos hidrológicos de dilución o concentración.")
-            fig = px.line(df_param, x=c.FECHA, y=c.VALOR, markers=True,
-                          labels={c.FECHA: "Fecha de Muestreo", c.VALOR: f"Concentración ({unidad})"},
-                          title=f"Serie Temporal: {parametro}")
-            fig.update_traces(line=dict(width=2, color="#9467bd"))
+            medidos = df_param[~df_param[COL_CATEGORIA].isin(CENSURADAS)]
+            fig = px.scatter(df_param, x=c.FECHA, y=c.VALOR, color=COL_CATEGORIA, symbol=COL_CATEGORIA,
+                             labels=etiquetas, title=f"Serie Temporal: {parametro}")
+            fig.add_trace(go.Scatter(x=medidos[c.FECHA], y=medidos[c.VALOR], mode="lines", name="Serie (sin censurados)",
+                                     line=dict(width=2, color="#9467bd")))
             grafico(fig)
         with tab_dist:
-            justificacion("La distribución estadística de las concentraciones facilita la identificación de valores atípicos.")
-            fig = px.box(df_param, y=c.VALOR, points="all",
-                         labels={c.VALOR: f"Distribución ({unidad})"},
-                         color_discrete_sequence=["#9467bd"], title=f"Rango de Dispersión Histórica: {parametro}")
+            justificacion("La distribución estadística de las concentraciones facilita la identificación de valores atípicos. "
+                          "Cada marca DGA se muestra por separado: los valores censurados no son concentraciones medidas.")
+            fig = px.box(df_param, x=COL_CATEGORIA, y=c.VALOR, color=COL_CATEGORIA, points="all",
+                         labels={**etiquetas, c.VALOR: f"Distribución ({unidad})"},
+                         title=f"Rango de Dispersión Histórica: {parametro}")
             grafico(fig)
+
+    @staticmethod
+    def _aviso_marcas(df_param: pd.DataFrame) -> None:
+        """Hallazgo #11: informa cuántas muestras son censuradas según la columna CALIDAD de la DGA."""
+        resumen = resumen_marcas(df_param[COL_CATEGORIA])
+        n_cens = int(df_param[COL_CATEGORIA].isin(CENSURADAS).sum())
+        if n_cens:
+            st.warning(f"{n_cens} de {len(df_param)} muestras ({n_cens / len(df_param):.1%}) son censuradas: "
+                       "con marca '<' el valor registrado es el límite de detección y con '>' el límite superior del "
+                       "rango, no concentraciones medidas. Se muestran por separado y no forman parte de la línea de la serie.")
+        with st.expander("Muestras por marca de calidad DGA"):
+            tabla(resumen, hide_index=True)
