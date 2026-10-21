@@ -36,10 +36,55 @@ y AGROMET Placilla Chacarilla del 01/01/2021 al 31/12/2023. "Mejor" es la distri
 Antes, en las dos estaciones "Tranque" se reportaban cuantiles de diseño a T = 100 años
 construidos con 3 años de AGROMET y 1 año parcial de DGA.
 
-**Sin cambio:** SAN FERNANDO, RIO CLARO EN EL VALLE, CONVENTO VIEJO, RIO TINGUIRIRICA BAJO LOS
-BRIONES, MILLAHUE y LA RUFINA. Su registro DGA continúa hasta 2026, así que 2021-2023 quedan
-*dentro* del periodo. Sin embargo, el archivo DGA no trae datos de esos tres años (salvo en
-CONVENTO VIEJO), por lo que AGROMET los rellena completos (1.094 días). Este es un problema
-distinto, que sigue abierto: rellenar años completos dentro del periodo con otra estación. Por
-ejemplo, en RIO CLARO EN EL VALLE, P24 T=100 pasa de 73.08 mm (8 años DGA) a 96.01 mm (11 años,
-3 de ellos AGROMET).
+**Sin cambio con esta corrección:** SAN FERNANDO, RIO CLARO EN EL VALLE, CONVENTO VIEJO, RIO
+TINGUIRIRICA BAJO LOS BRIONES, MILLAHUE y LA RUFINA. Su registro DGA continúa hasta 2026, así que
+2021-2023 quedan *dentro* del periodo. Sin embargo, el archivo DGA no trae datos de esos tres años
+(salvo en CONVENTO VIEJO), por lo que AGROMET los seguía rellenando completos. Eso se resuelve en
+el hallazgo #1b.
+
+## Hallazgo #1b: la imputación AGROMET completaba años sin registro DGA
+
+**Problema.** Dentro del periodo de registro, la imputación rellenaba cualquier día faltante.
+En el archivo `prep_diarias_historico_6.txt` faltan completos los años 2021, 2022 y 2023 en casi
+todas las estaciones. Por eso AGROMET (Placilla Chacarilla) aportaba 1.094 días, es decir, tres
+PMA anuales enteras tomadas de otra estación.
+
+**Corrección.** Solo se rellenan vacíos en años calendario con cobertura DGA >= 80 %. La cobertura
+es el número de días distintos con registro dividido por 365 o 366
+(`[imputacion].cobertura_min_anual` en `config/settings.toml`; umbral aprobado por el usuario).
+Los años bajo el umbral conservan solo sus días DGA y la app los lista en el panel de imputación.
+El comportamiento original queda disponible con la casilla "Imputación sin restricciones
+(dashboard original)", que en código corresponde a `extender=True, cobertura_min_anual=0`.
+
+**Efecto sobre los datos reales** (mismas estaciones y fuentes que en el hallazgo #1; "Corregido"
+incluye las correcciones #1 y #1b):
+
+| Estación | Variante | n años | P24 T=100 mejor [mm] | P24 T=100 Gumbel [mm] | Días imputados |
+|---|---|---|---|---|---|
+| SAN FERNANDO | Solo DGA | 53 | 171.68 (LP-III) | 178.96 | 0 |
+| | Original | 56 | 173.46 (LP-III) | 177.46 | 1.094 |
+| | **Corregido** | **53** | **171.68** (LP-III) | **178.96** | **0** |
+| RIO CLARO EN EL VALLE | Solo DGA | 8 | 73.08 (LP-III) | 90.45 | 0 |
+| | Original | 11 | 96.01 (LP-III) | 101.17 | 1.094 |
+| | **Corregido** | **8** | **73.08** (LP-III) | **90.45** | **0** |
+| RIO TINGUIRIRICA BAJO LOS BRIONES | Solo DGA | 25 | 126.85 (Log-Normal) | 129.50 | 0 |
+| | Original | 28 | 139.89 (LP-III) | 128.36 | 1.094 |
+| | **Corregido** | **25** | **126.85** (Log-Normal) | **129.50** | **0** |
+| MILLAHUE | Solo DGA | 52 | 133.36 (LP-III) | 162.65 | 0 |
+| | Original | 55 | 136.64 (LP-III) | 161.96 | 1.094 |
+| | **Corregido** | **52** | **133.36** (LP-III) | **162.65** | **0** |
+| LA RUFINA | Solo DGA | 64 | 169.92 (LP-III) | 193.56 | 0 |
+| | Original | 67 | 172.05 (LP-III) | 194.47 | 1.094 |
+| | **Corregido** | **64** | **169.92** (LP-III) | **193.56** | **0** |
+| CONVENTO VIEJO | todas | 56 | 117.19 (LP-III) | 132.30 | 15 en "Original" y "Corregido" (vacíos cortos) |
+
+**Conclusión.** Con los datos actuales, en las 10 estaciones a <= 30 km, la serie corregida da
+los mismos cuantiles que la serie solo DGA. La única imputación que sobrevive son 15 días
+aislados en CONVENTO VIEJO, que no alteran ninguna PMA. Los cuantiles reportados antes con
+AGROMET activado (opción por defecto del dashboard original) estaban influidos por 3 años de
+lluvia de Placilla Chacarilla en 7 de las 10 estaciones; en RIO CLARO EN EL VALLE la diferencia
+es de +31 % en P24 T=100.
+
+**Pendiente relacionado.** El año 2026 (151 días, hasta el 31/05) y otros años parciales siguen
+entrando a la serie de PMA. Eso corresponde al hallazgo #4 (completitud de años), que aún no se
+ha corregido.

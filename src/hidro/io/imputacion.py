@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import calendar
 from dataclasses import dataclass
 
 import pandas as pd
@@ -9,14 +10,25 @@ import pandas as pd
 from hidro.core import columnas as c
 from hidro.io.normalizacion import agregar_columnas_fecha
 
+COBERTURA_MIN_ANUAL_DEFECTO = 0.80
 
-def imputar_con_agromet(df_estacion: pd.DataFrame, df_agro: pd.DataFrame, extender: bool = False) -> pd.DataFrame:
+
+def cobertura_anual(df_estacion: pd.DataFrame) -> pd.Series:
+    """Fracción [-] de días de cada año calendario con registro DGA (días distintos / 365 o 366)."""
+    dias = df_estacion[c.FECHA].dt.normalize().drop_duplicates()
+    n = dias.groupby(dias.dt.year).size()
+    dias_anio = pd.Series([366 if calendar.isleap(int(a)) else 365 for a in n.index], index=n.index)
+    return n / dias_anio
+
+
+def imputar_con_agromet(df_estacion: pd.DataFrame, df_agro: pd.DataFrame, extender: bool = False,
+                        cobertura_min_anual: float = COBERTURA_MIN_ANUAL_DEFECTO) -> pd.DataFrame:
     """Rellena días sin dato de la estación DGA con AGROMET [mm], alineando por fecha.
 
-    Por defecto solo se rellenan vacíos internos: días entre la primera y la última fecha
-    con registro DGA. Con `extender=True` también se agregan días AGROMET antes y después
-    del periodo DGA (comportamiento del dashboard original, hallazgo #1); esos años quedan
-    con PMA proveniente de otra estación y alteran n, momentos y cuantiles.
+    Solo se rellenan vacíos de años calendario cuya cobertura DGA (ver `cobertura_anual`) es
+    >= `cobertura_min_anual`; un año sin registro o casi sin registro no se completa con otra
+    estación. Además, por defecto solo se consideran días entre la primera y la última fecha DGA
+    (hallazgo #1). `extender=True, cobertura_min_anual=0` reproduce el dashboard original.
 
     Días DGA repetidos se promedian. Devuelve una serie diaria con columna booleana IMPUTADO.
     """
@@ -28,7 +40,12 @@ def imputar_con_agromet(df_estacion: pd.DataFrame, df_agro: pd.DataFrame, extend
         indice = indice[(indice >= serie.index.min()) & (indice <= serie.index.max())]
     serie = serie.reindex(indice)
     faltantes = serie.isna()
-    serie = serie.fillna(agro.reindex(indice))
+    relleno = agro.reindex(indice)
+    if cobertura_min_anual > 0:
+        cobertura = cobertura_anual(df_estacion)
+        anio_valido = indice.year.map(cobertura).fillna(0.0) >= cobertura_min_anual
+        relleno = relleno.where(anio_valido)
+    serie = serie.fillna(relleno)
 
     out = pd.DataFrame({
         c.FECHA: indice,
@@ -43,6 +60,14 @@ def serie_sin_imputar(df_estacion: pd.DataFrame) -> pd.DataFrame:
     df = df_estacion[[c.FECHA, c.ANIO, c.MES, c.MES_NOMBRE, c.VALOR]].copy()
     df[c.IMPUTADO] = False
     return df
+
+
+def anios_bajo_cobertura(df_estacion: pd.DataFrame, df_agro: pd.DataFrame, cobertura_min_anual: float) -> list[int]:
+    """Años dentro del periodo DGA con datos AGROMET que NO se imputan por cobertura DGA insuficiente."""
+    cobertura = cobertura_anual(df_estacion)
+    periodo = range(int(df_estacion[c.FECHA].dt.year.min()), int(df_estacion[c.FECHA].dt.year.max()) + 1)
+    anios_agro = set(df_agro[c.FECHA].dt.year.astype(int))
+    return [a for a in periodo if a in anios_agro and cobertura.get(a, 0.0) < cobertura_min_anual]
 
 
 @dataclass(frozen=True)

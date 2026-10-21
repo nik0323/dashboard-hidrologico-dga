@@ -83,7 +83,8 @@ MIGRADAS = {
     "_leer_csv": lectura.leer_csv,
     "cargar_datos": lectura.cargar_serie_dga,
     "cargar_agromet": lambda d: lectura.cargar_agromet(d, PATRON_AGROMET, QA_MAX_PRECIP_HORARIA),
-    "imputar_con_agromet": imputacion.imputar_con_agromet,
+    "imputar_con_agromet": lambda dga, agro: imputacion.imputar_con_agromet(
+        dga, agro, cobertura_min_anual=_S.cobertura_min_anual),
     "serie_sin_agromet": imputacion.serie_sin_imputar,
     "anios_pma_imputada": lambda df: dict(zip(("n_imp", "fraccion", "anios"),
                                               asdict(imputacion.resumen_imputacion(df)).values())),

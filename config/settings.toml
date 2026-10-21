@@ -27,6 +27,11 @@ n_recomendado = 15     # bajo este n se advierte que la extrapolación es poco c
 [qa]
 max_precip_horaria_mm = 150.0   # mm/h, umbral QA/QC AGROMET
 
+[imputacion]
+# Fracción mínima de días con registro DGA en el año calendario para rellenar sus vacíos con AGROMET.
+# [SUPUESTO: 0.80 aprobado por el usuario; mismo criterio de completitud previsto para el hallazgo #4]
+cobertura_min_anual = 0.80
+
 [tormenta]
 t_diseno = [50, 100, 500]       # años; deben estar en frecuencia.t_objetivo
 dt_minutos = [5, 10, 15, 30]

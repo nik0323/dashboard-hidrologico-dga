@@ -159,8 +159,8 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
 `ADVERTENCIA (hallazgo #n)` en el código. Las correcciones ya aplicadas están en
 `docs/cambios_numericos.md`.
 
-- #1 (corregido): la imputación AGROMET ya no extiende la serie fuera del periodo DGA. Sigue
-  pendiente que rellene años completos sin registro DGA dentro del periodo.
+- #1 y #1b (corregidos): la imputación AGROMET solo rellena vacíos dentro del periodo DGA y en
+  años con cobertura DGA >= 80 % (`[imputacion].cobertura_min_anual`).
 - #2: AGROMET se aplica a cualquier estación sin importar la distancia.
 - #3: Giandotti usa el desnivel del cauce en vez de la altitud media de la cuenca sobre la salida.
 - #4: los máximos anuales no verifican la completitud de cada año.

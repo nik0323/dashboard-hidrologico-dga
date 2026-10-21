@@ -6,6 +6,8 @@ este: un cambio no registrado, o una corrección que no tuvo efecto, hace fallar
 """
 
 CAMBIOS_APROBADOS = {
-    "imputar_con_agromet": "Hallazgo #1: la imputación AGROMET ya no extiende la serie fuera del periodo DGA.",
-    "precipitaciones_con_agromet": "Hallazgo #1: PMA, cuantiles y resumen de imputación sin días fuera del periodo DGA.",
+    "imputar_con_agromet": (
+        "Hallazgo #1: la imputación AGROMET ya no extiende la serie fuera del periodo DGA. "
+        "Hallazgo #1b: no se imputan años con cobertura DGA < 80 %."),
+    "precipitaciones_con_agromet": "Hallazgos #1 y #1b: PMA, cuantiles y resumen de imputación.",
 }
