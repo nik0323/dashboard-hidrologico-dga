@@ -25,9 +25,10 @@ def test_hidro_reproduce_golden(api, golden, nombre):
     comparar(CASOS[nombre](api), golden[nombre], nombre)
 
 
-def test_core_no_importa_streamlit():
-    codigo = ("import sys, pkgutil, importlib, hidro.core as p\n"
-              "[importlib.import_module(f'hidro.core.{m.name}') for m in pkgutil.iter_modules(p.__path__)]\n"
+@pytest.mark.parametrize("paquete", ["hidro.core", "hidro.io"])
+def test_logica_no_importa_streamlit(paquete):
+    codigo = (f"import sys, pkgutil, importlib, {paquete} as p\n"
+              f"[importlib.import_module(f'{paquete}.{{m.name}}') for m in pkgutil.iter_modules(p.__path__)]\n"
               "print('streamlit' in sys.modules)")
     salida = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True, check=True)
     assert salida.stdout.strip() == "False"

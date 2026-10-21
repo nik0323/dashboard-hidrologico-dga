@@ -9,19 +9,16 @@ from types import SimpleNamespace
 
 from casos import api_original
 from hidro.core import calidad, caudales, cuenca, estaciones, frecuencia, geo, series, tormentas
+from hidro.io import exportar, imputacion, lectura, normalizacion
+from hidro.io.normalizacion import columna_estacion as _columna_estacion
+from hidro.io.normalizacion import columna_parametro as _columna_parametro
 
-# Parámetros del original (dashboard_dga.py:48-55)
+# Parámetros del original (dashboard_dga.py:45-57)
 LAT_REF, LON_REF = -34.636, -71.024
 T_OBJETIVO = frecuencia.T_OBJETIVO_DEFECTO
 N_MIN_AJUSTE = frecuencia.N_MIN_AJUSTE_DEFECTO
-
-
-def _columna_estacion(columnas):
-    return next((c for c in columnas if "ESTACI" in c and "COD" not in c), columnas[0])
-
-
-def _columna_parametro(columnas):
-    return next((c for c in columnas if "PARAMETRO" in c and "COD" not in c), None)
+PATRON_AGROMET = "*agromet_Placilla*.csv"
+QA_MAX_PRECIP_HORARIA = 150.0
 
 
 class _Ajuste(dict):
@@ -80,6 +77,16 @@ def _filtrar_parametro(df_est, parametro):
 
 
 MIGRADAS = {
+    # io/
+    "_leer_csv": lectura.leer_csv,
+    "cargar_datos": lectura.cargar_serie_dga,
+    "cargar_agromet": lambda d: lectura.cargar_agromet(d, PATRON_AGROMET, QA_MAX_PRECIP_HORARIA),
+    "imputar_con_agromet": imputacion.imputar_con_agromet,
+    "serie_sin_agromet": imputacion.serie_sin_imputar,
+    "anios_pma_imputada": lambda df: dict(zip(("n_imp", "fraccion", "anios"),
+                                              asdict(imputacion.resumen_imputacion(df)).values())),
+    "agregar_columnas_fecha": normalizacion.agregar_columnas_fecha,
+    "a_csv": exportar.a_csv,
     # core/
     "dms_a_decimal": geo.dms_a_decimal,
     "haversine_vectorizado": geo.haversine_vectorizado,
@@ -107,4 +114,6 @@ MIGRADAS = {
 
 
 def api_hidro():
-    return SimpleNamespace(**{**vars(api_original()), **MIGRADAS})
+    """Solo funciones de `hidro`: si un caso pide algo no migrado, falla con AttributeError."""
+    api_original()  # carga dashboard_dga_original en sys.path para formulas_originales
+    return SimpleNamespace(**MIGRADAS)
