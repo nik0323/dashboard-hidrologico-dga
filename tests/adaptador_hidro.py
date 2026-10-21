@@ -8,17 +8,19 @@ from dataclasses import asdict
 from types import SimpleNamespace
 
 from casos import api_original
+from hidro.config import RUTA_SETTINGS_DEFECTO, cargar_settings
 from hidro.core import calidad, caudales, cuenca, estaciones, frecuencia, geo, series, tormentas
 from hidro.io import exportar, imputacion, lectura, normalizacion
 from hidro.io.normalizacion import columna_estacion as _columna_estacion
 from hidro.io.normalizacion import columna_parametro as _columna_parametro
 
-# Parámetros del original (dashboard_dga.py:45-57)
-LAT_REF, LON_REF = -34.636, -71.024
-T_OBJETIVO = frecuencia.T_OBJETIVO_DEFECTO
-N_MIN_AJUSTE = frecuencia.N_MIN_AJUSTE_DEFECTO
-PATRON_AGROMET = "*agromet_Placilla*.csv"
-QA_MAX_PRECIP_HORARIA = 150.0
+# Parámetros desde settings.toml (test_config verifica que igualan al original)
+_S = cargar_settings(RUTA_SETTINGS_DEFECTO)
+LAT_REF, LON_REF = _S.punto_control.lat, _S.punto_control.lon
+T_OBJETIVO = _S.t_objetivo
+N_MIN_AJUSTE = _S.n_min_ajuste
+PATRON_AGROMET = _S.patron_agromet
+QA_MAX_PRECIP_HORARIA = _S.qa_max_precip_horaria_mm
 
 
 class _Ajuste(dict):

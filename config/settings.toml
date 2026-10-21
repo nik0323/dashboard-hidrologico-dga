@@ -1,0 +1,57 @@
+# Configuración de la plataforma hidro.
+# Rutas relativas: se resuelven desde la carpeta del proyecto (la que contiene config/).
+# Variables de entorno: DGA_DATA_DIR reemplaza [datos].directorio; HIDRO_SETTINGS apunta a otro .toml.
+
+[datos]
+# [SUPUESTO: "." = carpeta del proyecto, donde están hoy los archivos DGA/AGROMET.
+#  El original apuntaba a C:\Users\nicos\OneDrive\Escritorio\PRECIPITACIONES]
+directorio = "."
+patron_agromet = "*agromet_Placilla*.csv"
+
+[datos.archivos]
+precipitaciones = "prep_diarias_historico_6.txt"
+caudales = "caudal_diario_historico.txt"
+pozos = "niveles_estaticos_pozos_historico.txt"
+calidad = "calidad_agua_historico.txt"
+
+[punto_control]
+nombre = "Lo Moscoso"
+lat = -34.636   # grados decimales
+lon = -71.024
+
+[frecuencia]
+t_objetivo = [2, 5, 10, 25, 50, 100, 200, 500]   # años
+n_min_ajuste = 3       # mínimo absoluto de años con PMA > 0 para ajustar
+n_recomendado = 15     # bajo este n se advierte que la extrapolación es poco confiable
+
+[qa]
+max_precip_horaria_mm = 150.0   # mm/h, umbral QA/QC AGROMET
+
+[tormenta]
+t_diseno = [50, 100, 500]       # años; deben estar en frecuencia.t_objetivo
+dt_minutos = [5, 10, 15, 30]
+# [SUPUESTO: b = 0.33 valor por defecto del original, sin calibración local (hallazgo #7)]
+b_defecto = 0.33
+b_min = 0.1
+b_max = 0.5
+
+# Radio de búsqueda de estaciones alrededor del punto de control [km]
+[radios.precipitaciones]
+defecto = 30
+max = 100
+paso = 5
+
+[radios.caudales]
+defecto = 40
+max = 100
+paso = 5
+
+[radios.pozos]
+defecto = 50
+max = 100
+paso = 5
+
+[radios.calidad]
+defecto = 60
+max = 200
+paso = 10
