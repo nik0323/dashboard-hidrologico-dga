@@ -44,6 +44,12 @@ dt_minutos = [5, 10, 15, 30]
 b_defecto = 0.33
 b_min = 0.1
 b_max = 0.5
+# Factor que convierte la precipitación diaria de intervalo fijo (lectura 08-08 h) en P24 de 24 h móviles.
+# [SUPUESTO: 1.13 según Weiss (1964) y OMM (Manual on Estimation of PMP), aprobado por el usuario
+#  (hallazgo #7). Verificar contra la norma o manual que exija el proyecto. 1.0 reproduce el original.]
+factor_intervalo_fijo = 1.13
+factor_min = 1.0
+factor_max = 1.2
 
 # Radio de búsqueda de estaciones alrededor del punto de control [km]
 [radios.precipitaciones]

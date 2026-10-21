@@ -129,3 +129,18 @@ def test_hallazgo4_cuenta_dias_distintos():
 
 def test_hallazgo4_umbral_configurado():
     assert cargar_settings().cobertura_min_maximos == 0.80
+
+
+# ---------- Hallazgo #7: P24 de 24 h móviles = factor · PMA diaria de intervalo fijo ----------
+def test_hallazgo7_p24_movil():
+    from hidro.core.tormentas import FACTOR_INTERVALO_FIJO_DEFECTO, hietograma_bloques_alternos, p24_movil
+    assert FACTOR_INTERVALO_FIJO_DEFECTO == 1.13
+    assert p24_movil(100.0) == pytest.approx(113.0, abs=1e-12)
+    assert p24_movil(87.3, 1.0) == 87.3                      # factor 1 = dashboard original
+    _, hieto = hietograma_bloques_alternos(p24_movil(87.3), 15, 24, 0.33)
+    assert hieto.sum() == pytest.approx(1.13 * 87.3, abs=1e-9)
+
+
+def test_hallazgo7_factor_configurado():
+    t = cargar_settings().tormenta
+    assert (t.factor_intervalo_fijo, t.factor_min, t.factor_max) == (1.13, 1.0, 1.2)

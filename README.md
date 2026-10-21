@@ -166,7 +166,8 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
 - #4 (corregido): PMA y QMA excluyen años calendario con cobertura < 80 %
   (`[maximos_anuales].cobertura_min_anual`).
 - #5, #6: AGROMET usa el día calendario 00-24 h, y las horas faltantes y los valores rechazados por QA se suman como 0 mm.
-- #7: P24 sin factor de intervalo fijo → 24 h móvil; b = 0.33 sin calibración local.
+- #7 (corregido): la tormenta de diseño usa P24 = 1.13 · PMA diaria
+  (`[tormenta].factor_intervalo_fijo`). Sigue pendiente: b = 0.33 sin calibración local.
 - #8: QMA se calcula con el caudal medio diario, no con el instantáneo.
 - #9, #10: KS con D crítico asintótico; LP-III sin asimetría regional.
 - #11, #12: datos censurados de calidad y observaciones de pozos ignorados.

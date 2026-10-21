@@ -38,13 +38,17 @@ class Radio:
 
 @dataclass(frozen=True)
 class Tormenta:
-    """Opciones de la tormenta de diseño: T [años], Δt [min] y exponente de desagregación b [-]."""
+    """Opciones de la tormenta de diseño: T [años], Δt [min], exponente de desagregación b [-] y
+    factor intervalo fijo → 24 h móviles [-]."""
 
     t_diseno: tuple[int, ...]
     dt_minutos: tuple[int, ...]
     b_defecto: float
     b_min: float
     b_max: float
+    factor_intervalo_fijo: float
+    factor_min: float
+    factor_max: float
 
 
 @dataclass(frozen=True)
@@ -114,6 +118,9 @@ def _validar(s: Settings) -> None:
         errores.append("tormenta.t_diseno debe estar contenido en frecuencia.t_objetivo.")
     if not s.tormenta.b_min <= s.tormenta.b_defecto <= s.tormenta.b_max:
         errores.append("tormenta.b_defecto fuera de [b_min, b_max].")
+    t = s.tormenta
+    if not 1.0 <= t.factor_min <= t.factor_intervalo_fijo <= t.factor_max:
+        errores.append("tormenta.factor_intervalo_fijo debe cumplir 1.0 <= factor_min <= factor <= factor_max.")
     for clave, r in s.radios.items():
         if not r.min <= r.defecto <= r.max:
             errores.append(f"radios.{clave}: defecto fuera de [{r.min}, {r.max}].")

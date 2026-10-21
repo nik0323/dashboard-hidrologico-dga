@@ -1,5 +1,6 @@
 """Smoke test de la app completa con streamlit.testing (datos sintéticos, sin archivos DGA reales)."""
 
+import re
 import warnings
 
 import pytest
@@ -50,6 +51,26 @@ def test_precipitaciones_muestra_cuantiles_y_hietograma(dir_datos):
     assert "Precipitación Base" in textos
     assert at.selectbox(key="precipitaciones__dist").value in ("Gumbel", "Log-Pearson III", "Log-Normal")
     assert at.checkbox(key="precipitaciones__usar_agromet").value is True
+
+
+def _p24_mostrado(at):
+    """(P24, factor, PMA diaria) del recuadro informativo y suma del hietograma HEC-HMS."""
+    texto = next(i.value for i in at.info if "Precipitación Base" in i.value)
+    p24, factor, p_diaria = map(float, re.search(r"\*\*([\d.]+) mm\*\* = ([\d.]+) × ([\d.]+) mm", texto).groups())
+    suma_hec = at.dataframe[-1].value["Precipitación Incremental (mm)"].sum()
+    return p24, factor, p_diaria, suma_hec
+
+
+def test_hallazgo7_tormenta_usa_p24_movil(dir_datos):
+    at = _ejecutar("Precipitaciones")
+    p24, factor, p_diaria, suma_hec = _p24_mostrado(at)
+    assert factor == 1.13
+    assert p24 == pytest.approx(1.13 * p_diaria, abs=0.012)       # valores mostrados con 2 decimales
+    assert suma_hec == pytest.approx(p24, abs=0.06)                # 96 bloques redondeados a 3 decimales
+
+    at.number_input(key="precipitaciones__factor_if").set_value(1.0).run()
+    p24, factor, p_diaria, _ = _p24_mostrado(at)
+    assert factor == 1.0 and p24 == p_diaria                       # factor 1 = dashboard original
 
 
 def test_cuenca_tabla_invalida_no_genera_ficha(dir_datos):

@@ -143,7 +143,7 @@ class Precipitaciones(Modulo):
         c3.metric("Coef. de Variación (CV)", f"{e.cv:.1f} %")
         st.divider()
         fig = px.line(pma_anual, x=c.ANIO, y=c.VALOR, markers=True,
-                      labels={c.ANIO: "Año", c.VALOR: "PMA 24h (mm/día)"},
+                      labels={c.ANIO: "Año", c.VALOR: "PMA diaria, intervalo fijo (mm/día)"},
                       color_discrete_sequence=["#d62728"])
         grafico(fig)
 
@@ -164,8 +164,10 @@ class Precipitaciones(Modulo):
             st.caption(f"Se excluyeron {ajuste.n_ceros} años con PMA = 0 (incompatibles con modelos logarítmicos).")
 
         df_res = frecuencia.tabla_cuantiles(ajuste)
-        st.subheader("Cuantiles de Precipitación de Diseño (PMA 24h)")
+        st.subheader("Cuantiles de PMA diaria (intervalo fijo 08-08 h)")
         tabla(df_res.set_index("Periodo de Retorno T (Años)"))
+        st.caption(f"Valores de lectura diaria. Para la tormenta de diseño se convierten a P24 de 24 h móviles "
+                   f"multiplicando por el factor de intervalo fijo (por defecto {s.tormenta.factor_intervalo_fijo}).")
 
         st.subheader("Bondad de Ajuste (Kolmogorov-Smirnov)")
         tabla(ajuste.ks, hide_index=True)
@@ -200,15 +202,21 @@ class Precipitaciones(Modulo):
             return
 
         dists = list(ajuste.cuantiles.keys())
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4, c5 = st.columns(5)
         dist_sel = c1.selectbox("Modelo Probabilístico:", dists, index=dists.index(ajuste.mejor), key=ctx.key("dist"))
         t_sel = c2.selectbox("Periodo de Retorno (Años):", list(tc.t_diseno), key=ctx.key("t_diseno"))
         dt_sel = c3.selectbox("Intervalo de Tiempo Δt (min):", list(tc.dt_minutos), key=ctx.key("dt"))
         coef_b = c4.number_input("Coef. Desagregación (b):", min_value=tc.b_min, max_value=tc.b_max,
                                  value=tc.b_defecto, step=0.01, key=ctx.key("coef_b"))
+        factor = c5.number_input("Factor intervalo fijo → 24 h:", min_value=tc.factor_min, max_value=tc.factor_max,
+                                 value=tc.factor_intervalo_fijo, step=0.01, key=ctx.key("factor_if"),
+                                 help="Convierte la PMA diaria (lectura 08-08 h) en P24 de 24 h móviles. "
+                                      "1.13 según Weiss (1964) / OMM; 1.00 reproduce el dashboard original.")
 
-        p24 = ajuste.cuantiles[dist_sel][t_sel]
-        st.info(f"Precipitación Base ($P_{{24}}$): **{p24:.2f} mm** (Distribución {dist_sel}, T={t_sel} años). Coeficiente $b={coef_b}$.")
+        p_diaria = ajuste.cuantiles[dist_sel][t_sel]
+        p24 = tormentas.p24_movil(p_diaria, factor)
+        st.info(f"Precipitación Base ($P_{{24}}$): **{p24:.2f} mm** = {factor:.2f} × {p_diaria:.2f} mm "
+                f"(PMA diaria, Distribución {dist_sel}, T={t_sel} años). Coeficiente $b={coef_b}$.")
 
         duraciones = np.linspace(0.25, 24, 100)
         grid = dict(showgrid=True, gridcolor="rgba(128,128,128,0.4)",
@@ -216,7 +224,8 @@ class Precipitaciones(Modulo):
         fig = go.Figure()
         for t_plot in tc.t_diseno:
             fig.add_trace(go.Scatter(x=duraciones,
-                                     y=tormentas.intensidad_idf(ajuste.cuantiles[dist_sel][t_plot], duraciones, coef_b),
+                                     y=tormentas.intensidad_idf(tormentas.p24_movil(ajuste.cuantiles[dist_sel][t_plot], factor),
+                                                                duraciones, coef_b),
                                      mode="lines", name=f"T = {t_plot} años"))
         fig.update_layout(
             title=f"Curvas Intensidad-Duración-Frecuencia (IDF) - Modelo {dist_sel}",

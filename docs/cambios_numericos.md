@@ -127,3 +127,43 @@ estación. Casos notables: RIO TINGUIRIRICA EN PUENTE RUTA 90 (la estación que 
 defecto) pasa de 3 a 0 años y la app lo informa; CANAL TENO EN KM. 13.465 pasa de 25 a 10; RIO
 CLARO EN TUNCA, de 31 a 19. El QMA solo se grafica (no se ajustan distribuciones), así que este
 cambio no afecta cuantiles reportados.
+
+## Hallazgo #7: la tormenta de diseño usaba la PMA diaria como si fuera P24 de 24 h móviles
+
+**Problema.** La PMA de la DGA es una lectura de intervalo fijo (pluviómetro, 08-08 h). Una
+tormenta que cruza el horario de lectura queda repartida en dos días, así que el máximo diario es
+menor que el máximo de 24 horas consecutivas. El dashboard usaba la PMA diaria directamente como
+$P_{24}$ en las curvas IDF, en el hietograma de bloques alternos y en la serie para HEC-HMS.
+
+**Corrección.** $P_{24} = k \cdot P_{diaria}(T)$, con $k = 1.13$ (Weiss, 1964; OMM, *Manual on
+Estimation of Probable Maximum Precipitation*). El valor está en
+`[tormenta].factor_intervalo_fijo` de `config/settings.toml` y se puede ajustar en la app (rango
+1.00-1.20). Con $k = 1.00$ se reproduce el dashboard original.
+[SUPUESTO: 1.13 aprobado por el usuario; verificar contra la norma o manual que exija el proyecto.]
+
+**Alcance.** La tabla de cuantiles de la PMA, la prueba KS y la curva de frecuencia **no cambian**:
+siguen describiendo la lectura diaria y ahora lo indican en su rótulo. El factor solo se aplica al
+construir la tormenta: P24 del recuadro, curvas IDF, hietograma y CSV para HEC-HMS. Todas esas
+magnitudes aumentan exactamente un 13 %.
+
+**Efecto sobre los datos reales** (estaciones a <= 30 km, serie con las correcciones #1, #1b y #4,
+distribución de menor D en KS, b = 0.33):
+
+| Estación | Distribución | P diaria T=50 / 100 / 500 [mm] | P24 móvil T=50 / 100 / 500 [mm] | Bloque máx. T=100, Δt=15 min [mm] | i(1 h) T=100 [mm/h] |
+|---|---|---|---|---|---|
+| SAN FERNANDO | LP-III | 158.1 / 170.0 / 193.9 | 178.7 / 192.1 / 219.1 | 37.70 → 42.60 | 59.57 → 67.31 |
+| RIO CLARO EN EL VALLE | LP-III | 69.9 / 70.1 / 70.2 | 79.0 / 79.2 / 79.4 | 15.54 → 17.56 | 24.55 → 27.74 |
+| CONVENTO VIEJO | LP-III | 110.6 / 115.2 / 123.3 | 125.0 / 130.2 / 139.4 | 25.55 → 28.87 | 40.37 → 45.62 |
+| RIO TINGUIRIRICA BAJO LOS BRIONES | Gumbel | 119.2 / 131.8 / 161.2 | 134.6 / 149.0 / 182.1 | 29.23 → 33.03 | 46.19 → 52.20 |
+| VIÑA VIEJA | LP-III | 122.3 / 127.9 / 137.3 | 138.2 / 144.5 / 155.1 | 28.36 → 32.04 | 44.81 → 50.63 |
+| MILLAHUE | LP-III | 144.0 / 156.4 / 184.8 | 162.7 / 176.7 / 208.9 | 34.68 → 39.19 | 54.80 → 61.93 |
+| LA RUFINA | LP-III | 161.0 / 168.0 / 180.8 | 181.9 / 189.8 / 204.3 | 37.25 → 42.10 | 58.86 → 66.52 |
+| PANIAHUE | LP-III | 164.4 / 180.8 / 219.0 | 185.8 / 204.3 / 247.5 | 40.10 → 45.31 | 63.36 → 71.59 |
+
+TRANQUE LAS PATAGUAS y TRANQUE MILLAHUE no tienen ajuste (0 años completos).
+
+**Observación (hallazgo #10, pendiente).** En RIO CLARO EN EL VALLE, LP-III entrega cuantiles casi
+iguales para T = 50, 100 y 500 años (69.9, 70.1 y 70.2 mm). Es el síntoma de una asimetría
+negativa fuerte en log10, que impone una cota superior a la distribución, y con solo 5 años no es
+físicamente creíble. Para esa estación, Gumbel (P diaria T=100 = 92.33 mm) es más defendible, o
+bien conviene usar una estación vecina o un análisis regional.

@@ -6,6 +6,19 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+FACTOR_INTERVALO_FIJO_DEFECTO = 1.13
+
+
+def p24_movil(p_diaria_mm: float, factor: float = FACTOR_INTERVALO_FIJO_DEFECTO) -> float:
+    """P24 de 24 h móviles [mm] a partir de la precipitación diaria de intervalo fijo [mm].
+
+    La lectura diaria (08-08 h) no captura el máximo de 24 h consecutivas que cruza el horario de
+    lectura. Por eso se multiplica por un factor k >= 1. Con k = 1.13 (Weiss, 1964; OMM, Manual on
+    Estimation of PMP) se pasa de un intervalo fijo observacional al máximo de 24 h. Con k = 1
+    se reproduce el dashboard original.
+    """
+    return factor * p_diaria_mm
+
 
 def hietograma_bloques_alternos(p24: float, dt_minutos: float, duracion_total_horas: float = 24,
                                 b: float = 0.33) -> tuple[np.ndarray, np.ndarray]:
@@ -14,8 +27,8 @@ def hietograma_bloques_alternos(p24: float, dt_minutos: float, duracion_total_ho
     p24 [mm], dt_minutos [min], duracion_total_horas [h]. Devuelve (tiempo acumulado [min],
     precipitación incremental [mm]) con el bloque mayor al centro.
 
-    ADVERTENCIA (hallazgo #7): P24 proviene de un máximo diario de intervalo fijo (sin factor
-    de 24 h móvil) y b = 0.33 es un valor por defecto no calibrado localmente.
+    p24 debe ser de 24 h móviles (ver `p24_movil`, hallazgo #7).
+    ADVERTENCIA: b = 0.33 es un valor por defecto no calibrado localmente.
     """
     dt_horas = dt_minutos / 60.0
     n_bloques = int(round(duracion_total_horas / dt_horas))
