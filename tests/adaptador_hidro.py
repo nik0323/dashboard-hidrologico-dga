@@ -104,7 +104,7 @@ MIGRADAS = {
     "cn_retencion": _cn_retencion,
     "ficha_hec": cuenca.ficha_hec_hms,
     "curva_duracion": _curva_duracion,
-    "maximos_anuales": series.maximos_anuales,
+    "maximos_anuales": lambda df: series.maximos_anuales(df, _S.cobertura_min_maximos),
     "estadisticos_pma": lambda pma: asdict(series.estadisticos(pma)),
     "precip_mensual": series.totales_mensuales,
     "precip_anual": series.totales_anuales,

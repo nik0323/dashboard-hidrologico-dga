@@ -58,6 +58,7 @@ class Settings:
     n_recomendado: int
     qa_max_precip_horaria_mm: float
     cobertura_min_anual: float
+    cobertura_min_maximos: float
     tormenta: Tormenta
     radios: dict[str, Radio]
 
@@ -89,6 +90,7 @@ def cargar_settings(ruta: str | os.PathLike | None = None) -> Settings:
         n_recomendado=crudo["frecuencia"]["n_recomendado"],
         qa_max_precip_horaria_mm=float(crudo["qa"]["max_precip_horaria_mm"]),
         cobertura_min_anual=float(crudo["imputacion"]["cobertura_min_anual"]),
+        cobertura_min_maximos=float(crudo["maximos_anuales"]["cobertura_min_anual"]),
         tormenta=Tormenta(**{k: tuple(v) if isinstance(v, list) else v for k, v in crudo["tormenta"].items()}),
         radios={k: Radio(**v) for k, v in crudo["radios"].items()},
     )
@@ -106,6 +108,8 @@ def _validar(s: Settings) -> None:
         errores.append("frecuencia.n_min_ajuste debe ser >= 3 (LP-III requiere asimetría).")
     if not 0 <= s.cobertura_min_anual <= 1:
         errores.append("imputacion.cobertura_min_anual debe estar en [0, 1].")
+    if not 0 <= s.cobertura_min_maximos <= 1:
+        errores.append("maximos_anuales.cobertura_min_anual debe estar en [0, 1].")
     if not set(s.tormenta.t_diseno) <= set(s.t_objetivo):
         errores.append("tormenta.t_diseno debe estar contenido en frecuencia.t_objetivo.")
     if not s.tormenta.b_min <= s.tormenta.b_defecto <= s.tormenta.b_max:

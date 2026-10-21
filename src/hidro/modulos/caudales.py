@@ -59,7 +59,15 @@ class Caudales(Modulo):
 
         with tab_crecidas:
             justificacion("Análisis de los caudales máximos diarios anuales (QMA) para modelaciones hidráulicas y cálculo de cota de inundación.")
-            fig = px.bar(series.maximos_anuales(df_est), x=c.ANIO, y=c.VALOR,
+            cobertura_min = ctx.settings.cobertura_min_maximos
+            incompletos = series.anios_incompletos(df_est, cobertura_min)
+            if incompletos:
+                st.caption(f"Años excluidos por cobertura < {cobertura_min:.0%}: " + ", ".join(map(str, incompletos)))
+            qma = series.maximos_anuales(df_est, cobertura_min)
+            if qma.empty:
+                st.warning(f"La estación no tiene años con cobertura >= {cobertura_min:.0%}: no hay QMA confiables.")
+                return
+            fig = px.bar(qma, x=c.ANIO, y=c.VALOR,
                          labels={c.ANIO: "Año", c.VALOR: "Caudal Máximo Anual (m³/s)"},
                          color=c.VALOR, color_continuous_scale="Reds")
             grafico(fig)

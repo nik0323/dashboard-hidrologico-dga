@@ -2,23 +2,13 @@
 
 from __future__ import annotations
 
-import calendar
 from dataclasses import dataclass
 
 import pandas as pd
 
 from hidro.core import columnas as c
+from hidro.core.series import COBERTURA_MIN_ANUAL_DEFECTO, cobertura_anual
 from hidro.io.normalizacion import agregar_columnas_fecha
-
-COBERTURA_MIN_ANUAL_DEFECTO = 0.80
-
-
-def cobertura_anual(df_estacion: pd.DataFrame) -> pd.Series:
-    """Fracción [-] de días de cada año calendario con registro DGA (días distintos / 365 o 366)."""
-    dias = df_estacion[c.FECHA].dt.normalize().drop_duplicates()
-    n = dias.groupby(dias.dt.year).size()
-    dias_anio = pd.Series([366 if calendar.isleap(int(a)) else 365 for a in n.index], index=n.index)
-    return n / dias_anio
 
 
 def imputar_con_agromet(df_estacion: pd.DataFrame, df_agro: pd.DataFrame, extender: bool = False,

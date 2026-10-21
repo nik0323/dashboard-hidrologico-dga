@@ -14,7 +14,9 @@ MODULOS = ["Precipitaciones", "Parámetros de Cuenca (HEC-HMS)", "Caudales", "Ag
 @pytest.fixture
 def dir_datos(tmp_path, monkeypatch):
     archivos = cargar_settings().archivos
-    contenidos = {"precipitaciones": csv_precipitaciones(), "caudales": csv_caudales(),
+    # 14 años con 5 % de vacíos: suficientes años completos para el ajuste (hallazgo #4)
+    precip = csv_precipitaciones(inicio_cercana="2000-01-01", fin_cercana="2013-12-31", faltantes=0.05)
+    contenidos = {"precipitaciones": precip, "caudales": csv_caudales(),
                   "pozos": csv_pozos(), "calidad": csv_calidad()}
     for clave, contenido in contenidos.items():
         (tmp_path / archivos[clave]).write_bytes(contenido)

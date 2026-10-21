@@ -32,6 +32,11 @@ max_precip_horaria_mm = 150.0   # mm/h, umbral QA/QC AGROMET
 # [SUPUESTO: 0.80 aprobado por el usuario; mismo criterio de completitud previsto para el hallazgo #4]
 cobertura_min_anual = 0.80
 
+[maximos_anuales]
+# Fracción mínima de días con registro en el año calendario para incluir su máximo (PMA / QMA)
+# en la serie de extremos. [SUPUESTO: 0.80 aprobado por el usuario (hallazgo #4), año calendario]
+cobertura_min_anual = 0.80
+
 [tormenta]
 t_diseno = [50, 100, 500]       # años; deben estar en frecuencia.t_objetivo
 dt_minutos = [5, 10, 15, 30]

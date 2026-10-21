@@ -90,3 +90,42 @@ def test_hallazgo1b_umbral_cero_equivale_a_hallazgo1(serie_cobertura_mixta):
 
 def test_hallazgo1b_umbral_configurado():
     assert cargar_settings().cobertura_min_anual == 0.80
+
+
+# ---------- Hallazgo #4: máximos anuales solo de años con cobertura >= umbral ----------
+def _serie_diaria(dias, valores):
+    from hidro.io.normalizacion import agregar_columnas_fecha
+    return agregar_columnas_fecha(pd.DataFrame({"FECHA_DT": dias, "Valor_Registrado": valores}))
+
+
+def test_hallazgo4_excluye_anios_incompletos(serie_cobertura_mixta):
+    from hidro.core.series import anios_incompletos, maximos_anuales
+    dga, _ = serie_cobertura_mixta
+    df = _serie_diaria(dga["FECHA_DT"], np.arange(len(dga), dtype=float))
+    pma = maximos_anuales(df, 0.80)
+    assert pma["AÑO"].tolist() == [2019, 2021]                      # 2020 (27.3 %) excluido
+    assert anios_incompletos(df, 0.80) == [2020]
+    original = df.groupby("AÑO")["Valor_Registrado"].max().reset_index()
+    pd.testing.assert_frame_equal(maximos_anuales(df, 0.0), original)  # umbral 0 = original
+    pd.testing.assert_frame_equal(pma, original[original["AÑO"] != 2020].reset_index(drop=True))
+
+
+def test_hallazgo4_umbral_exacto_y_bisiesto():
+    from hidro.core.series import maximos_anuales
+    # 2020 bisiesto: 293/366 = 0.8005 (entra); 2021: 291/365 = 0.7973 (sale); 2022: 292/365 = 0.8 (entra)
+    dias = pd.DatetimeIndex(list(pd.date_range("2020-01-01", periods=293))
+                            + list(pd.date_range("2021-01-01", periods=291))
+                            + list(pd.date_range("2022-01-01", periods=292)))
+    pma = maximos_anuales(_serie_diaria(dias, 1.0), 0.80)
+    assert pma["AÑO"].tolist() == [2020, 2022]
+
+
+def test_hallazgo4_cuenta_dias_distintos():
+    from hidro.core.series import cobertura_anual
+    # mediciones repetidas el mismo día no inflan la cobertura
+    dias = pd.DatetimeIndex(list(pd.date_range("2021-01-01", periods=100)) * 3)
+    assert cobertura_anual(_serie_diaria(dias, 1.0)).loc[2021] == pytest.approx(100 / 365)
+
+
+def test_hallazgo4_umbral_configurado():
+    assert cargar_settings().cobertura_min_maximos == 0.80

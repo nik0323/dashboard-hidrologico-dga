@@ -102,16 +102,17 @@ def _csv_dga(var, unidad, fechas_por_est, generador, fecha_col="FECHA", extra=""
     return filas
 
 
-def csv_precipitaciones(encoding="utf-8"):
+def csv_precipitaciones(encoding="utf-8", inicio_cercana="2010-07-01", fin_cercana="2013-03-31", faltantes=0.15):
+    """Los valores por defecto definen los casos del golden; test_app usa una serie más larga."""
     rng = np.random.default_rng(10)
     fechas = [
-        pd.date_range("2010-07-01", "2013-03-31", freq="D"),
+        pd.date_range(inicio_cercana, fin_cercana, freq="D"),
         pd.date_range("2011-01-01", "2012-12-31", freq="D"),
         pd.date_range("2012-01-01", "2012-12-31", freq="D"),
         pd.date_range("2012-06-01", "2012-06-30", freq="D"),
     ]
-    # 15 % de días faltantes en la estación cercana (vacíos internos)
-    fechas[0] = fechas[0][rng.random(len(fechas[0])) > 0.15]
+    # Días faltantes en la estación cercana (vacíos internos)
+    fechas[0] = fechas[0][rng.random(len(fechas[0])) > faltantes]
 
     def gen(f):
         u = rng.random()

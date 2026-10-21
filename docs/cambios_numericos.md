@@ -85,6 +85,45 @@ AGROMET activado (opción por defecto del dashboard original) estaban influidos 
 lluvia de Placilla Chacarilla en 7 de las 10 estaciones; en RIO CLARO EN EL VALLE la diferencia
 es de +31 % en P24 T=100.
 
-**Pendiente relacionado.** El año 2026 (151 días, hasta el 31/05) y otros años parciales siguen
-entrando a la serie de PMA. Eso corresponde al hallazgo #4 (completitud de años), que aún no se
-ha corregido.
+## Hallazgo #4: años incompletos en la serie de máximos anuales (PMA y QMA)
+
+**Problema.** El máximo anual se calculaba con todos los años presentes, sin revisar cuántos días
+con registro tenían. Un año parcial puede no incluir el evento máximo. Por ejemplo, 2026 trae datos
+solo hasta el 31/05, antes del peak invernal. Esos años entraban con una PMA o QMA subestimada.
+
+**Corrección.** Solo entran a la serie de máximos los años calendario con cobertura >= 80 %
+(días distintos con registro / 365 o 366; `[maximos_anuales].cobertura_min_anual` en
+`config/settings.toml`; umbral aprobado por el usuario). Se aplica a la PMA (precipitaciones) y
+al QMA (caudales), y la app muestra los años excluidos. Con `cobertura_min_anual = 0` se
+reproduce el dashboard original. [SUPUESTO: año calendario; no se evaluó la cobertura de la
+temporada húmeda por separado.]
+
+**Efecto sobre la PMA (datos reales, estaciones a <= 30 km).** "Original" corresponde al dashboard
+inicial con AGROMET activado por defecto. "Final" incluye las correcciones #1, #1b y #4.
+
+| Estación | Excluidos por #4 | n (original → final) | P24 T=100 mejor [mm], original → final | P24 T=100 Gumbel [mm], original → final |
+|---|---|---|---|---|
+| SAN FERNANDO | 1971, 2026 | 56 → 51 | 173.46 → **170.01** (LP-III) | 177.46 → **180.19** |
+| RIO CLARO EN EL VALLE | 2016, 2020, 2026 | 11 → 5 | 96.01 → **70.07** (LP-III) | 101.17 → **92.33** |
+| CONVENTO VIEJO | 1971, 2026 | 56 → 54 | 117.19 → **115.23** (LP-III) | 132.30 → **132.76** |
+| RIO TINGUIRIRICA BAJO LOS BRIONES | 2002, 2026 | 28 → 23 | 139.89 (LP-III) → **131.84** (Gumbel) | 128.36 → **131.84** |
+| VIÑA VIEJA | 2003 | 41 → 37 | 127.52 → **127.88** (LP-III) | 147.82 → **150.59** |
+| MILLAHUE | 1976, 2006, 2026 | 55 → 49 | 136.64 → **156.41** (LP-III) | 161.96 → **158.30** |
+| LA RUFINA | 2026 | 67 → 63 | 172.05 → **168.00** (LP-III) | 194.47 → **193.48** |
+| PANIAHUE | 1988 | 13 → 9 | 183.28 → **180.82** (LP-III) | 171.52 → **176.16** |
+| TRANQUE LAS PATAGUAS | 2025 | 4 → 0 | 134.38 → sin ajuste | 144.94 → sin ajuste |
+| TRANQUE MILLAHUE | 2025 | 4 → 0 | 147.55 → sin ajuste | 133.28 → sin ajuste |
+
+Observaciones:
+- En MILLAHUE, al excluir 3 años, LP-III a T=100 sube un 14,5 % respecto del original (y un
+  17 % respecto de la serie solo DGA), mientras que Gumbel cambia menos de un 3 %. La asimetría
+  muestral de log10 es sensible a pocos datos (hallazgo #10). Conviene justificar en el informe la
+  distribución adoptada y no basarse solo en el menor D de la prueba KS.
+- RIO CLARO EN EL VALLE queda con 5 años completos. La app ya advierte que con menos de 15 años
+  la extrapolación a T altos tiene validez limitada.
+
+**Efecto sobre el QMA (estaciones fluviométricas a <= 40 km).** Se excluyen entre 1 y 15 años por
+estación. Casos notables: RIO TINGUIRIRICA EN PUENTE RUTA 90 (la estación que la app selecciona por
+defecto) pasa de 3 a 0 años y la app lo informa; CANAL TENO EN KM. 13.465 pasa de 25 a 10; RIO
+CLARO EN TUNCA, de 31 a 19. El QMA solo se grafica (no se ajustan distribuciones), así que este
+cambio no afecta cuantiles reportados.

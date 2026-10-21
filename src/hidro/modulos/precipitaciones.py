@@ -78,7 +78,10 @@ class Precipitaciones(Modulo):
         if usar_agromet:
             self._panel_imputacion(df_est, avisos_agro, anios_excluidos, cobertura_min)
 
-        pma_anual = series.maximos_anuales(df_est)
+        pma_anual = series.maximos_anuales(df_est, s.cobertura_min_maximos)
+        incompletos = series.anios_incompletos(df_est, s.cobertura_min_maximos)
+        aviso_incompletos = (f"Años excluidos de la serie de PMA por cobertura < {s.cobertura_min_maximos:.0%}: "
+                             + ", ".join(map(str, incompletos))) if incompletos else ""
         ajuste = frecuencia.ajustar_distribuciones(pma_anual[c.VALOR], s.t_objetivo, s.n_min_ajuste)
 
         tabs = st.tabs(["Régimen Estacional", "Acumulación Interanual", "Análisis de Extremos (PMA)",
@@ -88,9 +91,9 @@ class Precipitaciones(Modulo):
         with tabs[1]:
             self._acumulacion_anual(df_est)
         with tabs[2]:
-            self._extremos(pma_anual)
+            self._extremos(pma_anual, aviso_incompletos)
         with tabs[3]:
-            self._ajuste(ctx, ajuste, estacion)
+            self._ajuste(ctx, ajuste, estacion, aviso_incompletos)
         with tabs[4]:
             self._tormenta(ctx, ajuste, estacion)
 
@@ -129,8 +132,10 @@ class Precipitaciones(Modulo):
         grafico(fig)
 
     @staticmethod
-    def _extremos(pma_anual: pd.DataFrame) -> None:
+    def _extremos(pma_anual: pd.DataFrame, aviso_incompletos: str) -> None:
         justificacion("Cuantificación de la Precipitación Máxima Diaria Anual (PMA). Parámetro normativo para hietogramas de diseño.")
+        if aviso_incompletos:
+            st.caption(aviso_incompletos)
         e = series.estadisticos(pma_anual)
         c1, c2, c3 = st.columns(3)
         c1.metric("Media PMA (μ)", f"{e.media:.1f} mm")
@@ -143,11 +148,14 @@ class Precipitaciones(Modulo):
         grafico(fig)
 
     @staticmethod
-    def _ajuste(ctx: Contexto, ajuste: frecuencia.ResultadoAjuste | None, estacion: str) -> None:
+    def _ajuste(ctx: Contexto, ajuste: frecuencia.ResultadoAjuste | None, estacion: str, aviso_incompletos: str) -> None:
         s = ctx.settings
         justificacion("Modelación probabilística de la serie empírica de extremos para proyectar las Precipitaciones Máximas Diarias asociadas a los periodos de retorno (T).")
+        if aviso_incompletos:
+            st.caption(aviso_incompletos)
         if ajuste is None:
-            st.error(f"Se requieren al menos {s.n_min_ajuste} años con PMA > 0 para ajustar distribuciones.")
+            st.error(f"Se requieren al menos {s.n_min_ajuste} años completos (cobertura >= "
+                     f"{s.cobertura_min_maximos:.0%}) con PMA > 0 para ajustar distribuciones.")
             return
         if ajuste.n < s.n_recomendado:
             st.warning(f"La serie tiene {ajuste.n} años de registro (< {s.n_recomendado}). "
