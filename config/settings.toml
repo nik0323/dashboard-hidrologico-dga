@@ -76,3 +76,12 @@ paso = 5
 defecto = 60
 max = 200
 paso = 10
+
+[radios.normas]
+defecto = 60
+max = 200
+paso = 10
+
+[normas]
+# Límites normativos (ver advertencia de verificación en el archivo)
+archivo = "config/normas.toml"

@@ -9,7 +9,8 @@ from streamlit.testing.v1 import AppTest
 from casos import csv_caudales, csv_calidad, csv_pozos, csv_precipitaciones, escribir_agromet
 from hidro.config import RAIZ_PROYECTO, cargar_settings
 
-MODULOS = ["Precipitaciones", "Parámetros de Cuenca (HEC-HMS)", "Caudales", "Aguas Subterráneas", "Calidad Geoquímica"]
+MODULOS = ["Precipitaciones", "Parámetros de Cuenca (HEC-HMS)", "Caudales", "Aguas Subterráneas", "Calidad Geoquímica",
+           "Normas de Calidad (NCh 409 / 1333)"]
 
 
 def _calidad_con_marcas():
@@ -143,6 +144,19 @@ def test_hallazgo11_calidad_separa_censurados(dir_datos):
 
     at.selectbox(key="calidad__parametro").set_value("Ph").run()   # sin marcas '<': sin aviso
     assert not any("censuradas" in w.value for w in at.warning)
+
+
+def test_normas_evalua_y_advierte_limites_sin_verificar(dir_datos):
+    at = _ejecutar("Normas de Calidad (NCh 409 / 1333)")
+    assert any("NO están verificados" in w.value for w in at.warning)
+    at.selectbox(key="normas__norma").set_value("nch1333_riego").run()
+    assert not at.exception
+    resumen = at.dataframe[0].value.set_index("Parámetro")
+    # Sulfato sintético ≈ 120 ± 25 mg/l (límite 250); 1 de cada 3 muestras '<' con LD = valor registrado
+    assert resumen.loc["Sulfato", "Estado"] == "Cumple"
+    assert resumen.loc["Sulfato", "Determinadas"] == resumen.loc["Sulfato", "Muestras"]
+    assert resumen.loc["pH", "Estado"] == "Cumple"
+    assert resumen.loc["Bario", "Estado"] == "Sin parámetro DGA"
 
 
 def test_cuenca_tabla_invalida_no_genera_ficha(dir_datos):

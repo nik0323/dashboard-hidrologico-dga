@@ -67,6 +67,7 @@ class Settings:
     cobertura_min_maximos: float
     tormenta: Tormenta
     radios: dict[str, Radio]
+    archivo_normas: Path
 
     def radio(self, clave: str) -> Radio:
         return self.radios[clave]
@@ -101,9 +102,16 @@ def cargar_settings(ruta: str | os.PathLike | None = None) -> Settings:
         cobertura_min_maximos=float(crudo["maximos_anuales"]["cobertura_min_anual"]),
         tormenta=Tormenta(**{k: tuple(v) if isinstance(v, list) else v for k, v in crudo["tormenta"].items()}),
         radios={k: Radio(**v) for k, v in crudo["radios"].items()},
+        archivo_normas=_resolver(ruta, crudo["normas"]["archivo"]),
     )
     _validar(settings)
     return settings
+
+
+def _resolver(ruta_settings: Path, ruta: str) -> Path:
+    """Ruta absoluta; las relativas se resuelven desde la carpeta del proyecto (padre de config/)."""
+    p = Path(ruta)
+    return p if p.is_absolute() else (ruta_settings.resolve().parent.parent / p).resolve()
 
 
 def _validar(s: Settings) -> None:

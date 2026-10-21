@@ -1,0 +1,377 @@
+# Límites normativos de calidad de agua para el módulo "Normas de Calidad".
+#
+# ADVERTENCIA: los valores fueron precargados de memoria por el asistente y NO están verificados.
+# Antes de usarlos en un informe, contrastar cada límite con el texto oficial vigente de la norma
+# (INN) y cambiar `verificado = true`. La app muestra un aviso mientras haya límites sin verificar.
+#
+# Campos de [[limite]]:
+#   norma           clave de una [[norma]]
+#   parametro       nombre del parámetro en la norma
+#   parametros_dga  nombres exactos en la columna PARAMETRO de la DGA ([] = la DGA no lo informa)
+#   unidad_dga      primer término de la columna UNIDAD de la DGA, en minúsculas ("mg/l", "unid.")
+#   maximo/minimo   límites (al menos uno)
+#   nota            observación que se muestra junto al resultado
+
+[[norma]]
+clave = "nch409"
+nombre = "NCh 409/1 — Agua potable"
+fuente = "NCh 409/1 Of. 2005 (verificar versión vigente y tablas de requisitos químicos)"
+
+[[norma]]
+clave = "nch1333_riego"
+nombre = "NCh 1333 — Agua para riego"
+fuente = "NCh 1333 Of. 1978, mod. 1987 (verificar tabla de requisitos químicos para riego)"
+
+# ---------------------------------------------------------------- NCh 409/1: agua potable
+[[limite]]
+norma = "nch409"
+parametro = "Arsénico"
+parametros_dga = ["Arsenico total"]
+unidad_dga = "mg/l"
+maximo = 0.01
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Cadmio"
+parametros_dga = ["Cadmio total"]
+unidad_dga = "mg/l"
+maximo = 0.01
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Cianuro"
+parametros_dga = ["Cianuro"]
+unidad_dga = "mg/l"
+maximo = 0.05
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Cloruro"
+parametros_dga = ["Cloruro"]
+unidad_dga = "mg/l"
+maximo = 400.0
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Cobre"
+parametros_dga = ["Cobre total"]
+unidad_dga = "mg/l"
+maximo = 2.0
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Cromo total"
+parametros_dga = []
+unidad_dga = "mg/l"
+maximo = 0.05
+verificado = false
+nota = "La DGA informa solo cromo hexavalente, que no equivale a cromo total."
+
+[[limite]]
+norma = "nch409"
+parametro = "Fluoruro"
+parametros_dga = ["Fluoruro"]
+unidad_dga = "mg/l"
+maximo = 1.5
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Hierro"
+parametros_dga = ["Fierro total"]
+unidad_dga = "mg/l"
+maximo = 0.3
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Magnesio"
+parametros_dga = ["Magnesio total"]
+unidad_dga = "mg/l"
+maximo = 125.0
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Manganeso"
+parametros_dga = ["Manganeso total"]
+unidad_dga = "mg/l"
+maximo = 0.1
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Mercurio"
+parametros_dga = ["Mercurio total"]
+unidad_dga = "mg/l"
+maximo = 0.001
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Nitrato (NO3)"
+parametros_dga = ["Nitrato"]
+unidad_dga = "mg/l"
+maximo = 50.0
+verificado = false
+nota = "La norma también exige NO3/50 + NO2/3 <= 1 (no evaluado aquí)."
+
+[[limite]]
+norma = "nch409"
+parametro = "Nitrito (NO2)"
+parametros_dga = ["Nitrito"]
+unidad_dga = "mg/l"
+maximo = 3.0
+verificado = false
+nota = "La DGA no indica si el nitrito se expresa como NO2 o como N; verificar."
+
+[[limite]]
+norma = "nch409"
+parametro = "pH"
+parametros_dga = ["Ph"]
+unidad_dga = "unid."
+minimo = 6.5
+maximo = 8.5
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Plomo"
+parametros_dga = ["Plomo total"]
+unidad_dga = "mg/l"
+maximo = 0.05
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Selenio"
+parametros_dga = ["Selenio total"]
+unidad_dga = "mg/l"
+maximo = 0.01
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Sulfato"
+parametros_dga = ["Sulfato"]
+unidad_dga = "mg/l"
+maximo = 500.0
+verificado = false
+
+[[limite]]
+norma = "nch409"
+parametro = "Zinc"
+parametros_dga = ["Zinc total"]
+unidad_dga = "mg/l"
+maximo = 3.0
+verificado = false
+
+# ---------------------------------------------------------------- NCh 1333: riego
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Aluminio"
+parametros_dga = ["Aluminio Total"]
+unidad_dga = "mg/l"
+maximo = 5.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Arsénico"
+parametros_dga = ["Arsenico total"]
+unidad_dga = "mg/l"
+maximo = 0.1
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Bario"
+parametros_dga = []
+unidad_dga = "mg/l"
+maximo = 4.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Berilio"
+parametros_dga = []
+unidad_dga = "mg/l"
+maximo = 0.1
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Boro"
+parametros_dga = ["Boro"]
+unidad_dga = "mg/l"
+maximo = 0.75
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Cadmio"
+parametros_dga = ["Cadmio total"]
+unidad_dga = "mg/l"
+maximo = 0.01
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Cianuro"
+parametros_dga = ["Cianuro"]
+unidad_dga = "mg/l"
+maximo = 0.2
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Cloruro"
+parametros_dga = ["Cloruro"]
+unidad_dga = "mg/l"
+maximo = 200.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Cobalto"
+parametros_dga = ["Cobalto Total"]
+unidad_dga = "mg/l"
+maximo = 0.05
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Cobre"
+parametros_dga = ["Cobre total"]
+unidad_dga = "mg/l"
+maximo = 0.2
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Cromo"
+parametros_dga = []
+unidad_dga = "mg/l"
+maximo = 0.1
+verificado = false
+nota = "La DGA informa solo cromo hexavalente, que no equivale a cromo total."
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Fluoruro"
+parametros_dga = ["Fluoruro"]
+unidad_dga = "mg/l"
+maximo = 1.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Hierro"
+parametros_dga = ["Fierro total"]
+unidad_dga = "mg/l"
+maximo = 5.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Litio"
+parametros_dga = ["Litio disuelto"]
+unidad_dga = "mg/l"
+maximo = 2.5
+verificado = false
+nota = "La DGA informa solo litio disuelto. Para cítricos la norma fija un límite menor."
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Manganeso"
+parametros_dga = ["Manganeso total"]
+unidad_dga = "mg/l"
+maximo = 0.2
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Mercurio"
+parametros_dga = ["Mercurio total"]
+unidad_dga = "mg/l"
+maximo = 0.001
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Molibdeno"
+parametros_dga = ["Molibdeno disuelto"]
+unidad_dga = "mg/l"
+maximo = 0.01
+verificado = false
+nota = "La DGA informa solo molibdeno disuelto."
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Níquel"
+parametros_dga = ["Niquel total"]
+unidad_dga = "mg/l"
+maximo = 0.2
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "pH"
+parametros_dga = ["Ph"]
+unidad_dga = "unid."
+minimo = 5.5
+maximo = 9.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Plata"
+parametros_dga = ["Plata total"]
+unidad_dga = "mg/l"
+maximo = 0.2
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Plomo"
+parametros_dga = ["Plomo total"]
+unidad_dga = "mg/l"
+maximo = 5.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Selenio"
+parametros_dga = ["Selenio total"]
+unidad_dga = "mg/l"
+maximo = 0.02
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Sulfato"
+parametros_dga = ["Sulfato"]
+unidad_dga = "mg/l"
+maximo = 250.0
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Vanadio"
+parametros_dga = []
+unidad_dga = "mg/l"
+maximo = 0.1
+verificado = false
+
+[[limite]]
+norma = "nch1333_riego"
+parametro = "Zinc"
+parametros_dga = ["Zinc total"]
+unidad_dga = "mg/l"
+maximo = 2.0
+verificado = false

@@ -15,7 +15,7 @@ def registro_aislado(monkeypatch):
 
 def test_modulos_registrados():
     clases = registro.modulos()
-    assert [m.clave for m in clases] == ["precipitaciones", "cuenca", "caudales", "pozos", "calidad"]
+    assert [m.clave for m in clases] == ["precipitaciones", "cuenca", "caudales", "pozos", "calidad", "normas"]
     assert all(isinstance(m, type) and issubclass(m, Modulo) for m in clases)
 
 

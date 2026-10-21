@@ -34,6 +34,21 @@ Archivos esperados (nombres configurables en `[datos.archivos]`):
 | calidad | `calidad_agua_historico.txt` |
 | AGROMET (opcional) | patrón `*agromet_Placilla*.csv` |
 
+## Módulo de normas de calidad (NCh 409/1 y NCh 1333 riego)
+
+Compara las muestras de calidad de una estación con los límites de `config/normas.toml`.
+
+- **Los límites vienen precargados SIN verificar** (`verificado = false`). Antes de usar los
+  resultados en un informe, contrastar cada límite con el texto oficial vigente (INN) y cambiar a
+  `verificado = true`. Mientras queden límites sin verificar, la app lo advierte.
+- Cada límite indica qué parámetros DGA le corresponden (`parametros_dga`). Los parámetros que la
+  DGA no informa (Bario, Berilio, Vanadio, cromo total) aparecen como "Sin parámetro DGA".
+- Censura (marca `CALIDAD` de la DGA): una muestra "<" cumple solo si su límite de detección es
+  menor o igual que el límite normativo; si no, queda **indeterminada**. El % de excedencia se
+  calcula sobre las muestras determinadas.
+- Para agregar una norma o un uso (por ejemplo, NCh 1333 vida acuática), agregar un bloque
+  `[[norma]]` y sus `[[limite]]` en `config/normas.toml`; no hay que modificar código.
+
 ## Configuración
 
 Todo valor técnico vive en `config/settings.toml`: punto de control, periodos de retorno,

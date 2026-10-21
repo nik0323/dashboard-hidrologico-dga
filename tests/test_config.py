@@ -26,10 +26,12 @@ def test_settings_igual_a_constantes_originales():
     assert (s.n_min_ajuste, s.n_recomendado) == (o.N_MIN_AJUSTE, o.N_RECOMENDADO)
     assert s.qa_max_precip_horaria_mm == o.QA_MAX_PRECIP_HORARIA
     # Radios de los sliders en modulo_* (dashboard_dga.py:376, 434, 720, 772, 817)
-    assert {k: (r.defecto, r.max, r.paso, r.min) for k, r in s.radios.items()} == {
+    originales = ("precipitaciones", "caudales", "pozos", "calidad")
+    assert {k: (r.defecto, r.max, r.paso, r.min) for k, r in s.radios.items() if k in originales} == {
         "precipitaciones": (30, 100, 5, 10), "caudales": (40, 100, 5, 10),
         "pozos": (50, 100, 5, 10), "calidad": (60, 200, 10, 10),
     }
+    assert s.radio("normas") == s.radio("calidad")   # módulo nuevo: mismo radio que calidad
     # Selectores de la tormenta de diseño (dashboard_dga.py:559-561)
     assert s.tormenta.t_diseno == (50, 100, 500)
     assert s.tormenta.dt_minutos == (5, 10, 15, 30)
