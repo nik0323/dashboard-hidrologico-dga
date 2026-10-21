@@ -33,7 +33,8 @@ class _Ajuste(dict):
 
 
 def _ajustar_distribuciones(x):
-    r = frecuencia.ajustar_distribuciones(x, T_OBJETIVO, N_MIN_AJUSTE)
+    r = frecuencia.ajustar_distribuciones(x, T_OBJETIVO, N_MIN_AJUSTE, n_bootstrap=_S.n_bootstrap,
+                                          semilla=_S.semilla_bootstrap, alfa=_S.alfa_ks)
     return None if r is None else _Ajuste(r)
 
 

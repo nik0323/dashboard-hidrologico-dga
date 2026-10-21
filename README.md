@@ -185,9 +185,9 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
 - #7 (corregido): la tormenta de diseño usa P24 = 1.13 · PMA diaria
   (`[tormenta].factor_intervalo_fijo`). Sigue pendiente: b = 0.33 sin calibración local.
 - #8 (advertido): QMA se calcula con el caudal medio diario, no con el instantáneo.
-- #9: KS con D crítico asintótico.
-- #10 (parcial): la tormenta usa por defecto la distribución de menor D *sin techo* (crecimiento
-  >= 5 % entre T=50 y 500). Sigue pendiente: LP-III sin asimetría regional ponderada.
+- #9 (corregido): KS con D crítico exacto y p-valor por bootstrap paramétrico (decide el resultado).
+- #10 (corregido): la tormenta usa por defecto la distribución de menor D *sin techo*, y se agrega
+  LP-III con asimetría regional ponderada (Bulletin 17B; región = estaciones vecinas con >= 25 años).
 - #11 (corregido): las muestras de calidad se clasifican por la marca `CALIDAD` de la DGA
   (`<` = límite de detección) y las censuradas se muestran por separado; no se sustituyen valores.
 - #12 (corregido): el nivel estático excluye las mediciones dinámicas y las de pozos embancados
@@ -195,6 +195,5 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
 - #13 (corregido): en `dms_a_decimal`, |v| <= 180 se toma como grado decimal, 0 como coordenada
   faltante y una latitud > 90° como inválida.
 
-Pendientes que requieren decisiones metodológicas: #9 (tabla exacta de KS / Lilliefors) y #10b
-(asimetría regional ponderada de LP-III). Antes de usar el módulo de normas en un informe, hay
-que verificar los límites de `config/normas.toml`.
+Antes de usar el módulo de normas en un informe, hay que verificar los límites de
+`config/normas.toml`.

@@ -28,6 +28,18 @@ n_recomendado = 15     # bajo este n se advierte que la extrapolación es poco c
 # en la tormenta de diseño. [SUPUESTO: 5 % entre T = 50 y 500 años, aprobado por el usuario]
 t_cola = [50, 500]
 crecimiento_min_cola = 0.05
+# Bondad de ajuste (hallazgo #9): resultado según p-valor por bootstrap paramétrico (tipo Lilliefors).
+alfa_ks = 0.05
+n_bootstrap = 1000            # réplicas; 0 = solo D crítico exacto
+semilla_bootstrap = 20261021  # fija: resultados reproducibles
+
+[asimetria_regional]
+# LP-III ponderada (hallazgo #10b, Bulletin 17B). [SUPUESTO aprobado: la región son las estaciones
+# vecinas dentro del radio de búsqueda con al menos n_min_anios años completos; asimetría regional =
+# promedio de sus asimetrías de log10; MSE regional = varianza entre estaciones.]
+usar = true
+n_min_anios = 25
+min_estaciones = 3
 
 [qa]
 max_precip_horaria_mm = 150.0   # mm/h, umbral QA/QC AGROMET

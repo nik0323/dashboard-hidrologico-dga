@@ -354,6 +354,70 @@ natales en bocatoma" (XII Región) tiene LATITUD = 50141, es decir 5°01'41'', f
 Probablemente corresponde a 51°41'. No afecta los análisis en torno a Lo Moscoso, que queda a más
 de 2.000 km.
 
+## Hallazgo #9: prueba KS con D crítico asintótico y parámetros estimados
+
+**Problema.** Para el D crítico se usaba la aproximación asintótica $1.36/\sqrt{n}$, y el p-valor de
+`scipy.stats.kstest`, que supone que los parámetros son conocidos. Como los parámetros se estiman
+con la misma muestra, ambos sobrestiman la aceptación (sesgo tipo Lilliefors).
+
+**Corrección (aprobada).** La tabla KS ahora tiene:
+- el D crítico **exacto** para n finito (`scipy.stats.kstwo`; para n = 10, 0.409 frente a 0.430 de
+  la fórmula asintótica). Es referencial, porque sigue suponiendo parámetros conocidos;
+- el p-valor KS clásico, también referencial;
+- el **p-valor por bootstrap paramétrico**: se simulan 1000 muestras de la distribución ajustada,
+  se reajustan con el mismo método y se recalcula D, con semilla fija para que sea reproducible.
+  **El resultado (Aceptada/Rechazada) se decide con este p-valor** (α = 0.05).
+
+Los cuantiles, las curvas y el estadístico D no cambian, por lo que la distribución de menor D
+tampoco. Configuración: `[frecuencia].alfa_ks`, `n_bootstrap` y `semilla_bootstrap`.
+
+Validación: en una muestra uniforme (n = 60), la KS clásica acepta Gumbel (p = 0.13) y el bootstrap
+la rechaza (p = 0.006). En las muestras de prueba, el p-valor bootstrap nunca supera al clásico.
+
+## Hallazgo #10b: LP-III con asimetría regional ponderada (Bulletin 17B)
+
+**Problema.** LP-III usaba solo la asimetría muestral de log10 de la estación, que con pocos años
+es muy inestable (por ejemplo, el techo de RIO CLARO EN EL VALLE en el hallazgo #10).
+
+**Corrección (aprobada).** Se agrega una cuarta distribución, "Log-Pearson III (ponderada)", sin
+reemplazar la LP-III original:
+
+$G_w = \dfrac{MSE_{\bar G}\, G + MSE_G\, \bar G}{MSE_{\bar G} + MSE_G}$, con $MSE_G = 10^{A - B \log_{10}(n/10)}$
+(Bulletin 17B, ec. 5 y 6).
+
+[SUPUESTO aprobado] Como no hay un mapa de asimetría regional para Chile:
+- $\bar G$ es el promedio de las asimetrías de log10 de las estaciones vecinas (dentro del radio de
+  búsqueda) con al menos 25 años completos, sin incluir la estación evaluada, y usando solo datos
+  DGA (sin AGROMET);
+- $MSE_{\bar G}$ es la varianza entre esas estaciones, lo que es conservador porque incluye su
+  error de muestreo;
+- se requieren al menos 3 estaciones (`[asimetria_regional]`).
+
+**Efecto sobre los datos reales** (radio de 30 km; estaciones con n >= 25: SAN FERNANDO −0.59,
+CONVENTO VIEJO −0.85, LA RUFINA −0.79, MILLAHUE −0.04 y VIÑA VIEJA −0.99; $\bar G$ ≈ −0.6 a −0.8
+según la estación excluida). "Recomendada" es la de menor D sin techo (hallazgo #10).
+
+| Estación | n | G | G ponderada | Rechazadas por bootstrap | P diaria T=100 LP-III → LP-III pond. [mm] | Recomendada (P T=100) |
+|---|---|---|---|---|---|---|
+| SAN FERNANDO | 51 | −0.59 | −0.62 | — | 170.0 → 168.0 | LP-III pond. (167.98) |
+| RIO CLARO EN EL VALLE | 5 | −1.94 | −0.66 | Gumbel, Log-Normal | 70.1 → 85.0 | LP-III pond. (84.99) |
+| CONVENTO VIEJO | 54 | −0.85 | −0.73 | — | 115.2 → 118.9 | LP-III (115.23) |
+| RIO TINGUIRIRICA BAJO LOS BRIONES | 23 | +0.25 | −0.32 | — | 141.8 → 121.0 | Gumbel (131.84) |
+| VIÑA VIEJA | 37 | −0.99 | −0.59 | — | 127.9 → 146.2 | LP-III pond. (146.21) |
+| MILLAHUE | 49 | −0.04 | −0.64 | — | 156.4 → 135.8 | LP-III (156.41) |
+| LA RUFINA | 63 | −0.79 | −0.71 | — | 168.0 → 171.2 | LP-III pond. (171.21) |
+| PANIAHUE | 9 | −0.03 | −0.52 | — | 180.8 → 158.7 | LP-III (180.82) |
+
+Observaciones:
+- En RIO CLARO EN EL VALLE, la ponderación lleva G de −1.94 a −0.66 y elimina el techo de LP-III:
+  P T=100 pasa de 70.1 a 85.0 mm. Además, el bootstrap rechaza Gumbel y Log-Normal (p = 0.01 y
+  0.03), que con la KS asintótica se aceptaban.
+- En MILLAHUE y PANIAHUE la asimetría de la estación (≈ 0) es mucho menos negativa que la regional.
+  La ponderada baja P T=100 en 21-22 mm, pero la recomendada sigue siendo LP-III (menor D).
+- La distribución recomendada se sigue eligiendo por menor D entre las que no tienen techo; no
+  excluye automáticamente las rechazadas por bootstrap. Con estos datos, ninguna recomendada fue
+  rechazada.
+
 ## Hallazgo #10: elección de la distribución sin revisar la cola
 
 **Problema.** La tormenta de diseño usaba por defecto la distribución con menor estadístico D de

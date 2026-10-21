@@ -18,7 +18,8 @@ from hidro.modulos.registro import registrar
 from hidro.ui import cache, datos, red
 from hidro.ui.componentes import descarga_csv, encabezado, grafico, justificacion, tabla
 
-ESTILOS_DIST = {"Gumbel": ("blue", "solid"), "Log-Pearson III": ("red", "dash"), "Log-Normal": ("green", "dot")}
+ESTILOS_DIST = {"Gumbel": ("blue", "solid"), frecuencia.LP3: ("red", "dash"), "Log-Normal": ("green", "dot"),
+                frecuencia.LP3_PONDERADA: ("purple", "dashdot")}
 
 
 @registrar
@@ -85,7 +86,9 @@ class Precipitaciones(Modulo):
         incompletos = series.anios_incompletos(df_est, s.cobertura_min_maximos)
         aviso_incompletos = (f"Años excluidos de la serie de PMA por cobertura < {s.cobertura_min_maximos:.0%}: "
                              + ", ".join(map(str, incompletos))) if incompletos else ""
-        ajuste = frecuencia.ajustar_distribuciones(pma_anual[c.VALOR], s.t_objetivo, s.n_min_ajuste)
+        regional = self._asimetria_regional(ctx, df_radio, col_est, estacion) if s.regional_usar else None
+        ajuste = frecuencia.ajustar_distribuciones(pma_anual[c.VALOR], s.t_objetivo, s.n_min_ajuste, regional=regional,
+                                                   n_bootstrap=s.n_bootstrap, semilla=s.semilla_bootstrap, alfa=s.alfa_ks)
         diagnostico, recomendada = {}, None
         if ajuste is not None:
             diagnostico = frecuencia.diagnosticar_cola(ajuste, s.t_cola, s.crecimiento_min_cola)
@@ -100,9 +103,21 @@ class Precipitaciones(Modulo):
         with tabs[2]:
             self._extremos(pma_anual, aviso_incompletos)
         with tabs[3]:
-            self._ajuste(ctx, ajuste, estacion, aviso_incompletos, diagnostico, recomendada)
+            self._ajuste(ctx, ajuste, estacion, aviso_incompletos, diagnostico, recomendada, regional)
         with tabs[4]:
             self._tormenta(ctx, ajuste, estacion, recomendada)
+
+    @staticmethod
+    def _asimetria_regional(ctx: Contexto, df_radio: pd.DataFrame, col_est: str,
+                            estacion: str) -> frecuencia.AsimetriaRegional | None:
+        """Hallazgo #10b: asimetría regional con las estaciones del radio (solo DGA, años completos)."""
+        s = ctx.settings
+        series_pma = {
+            nombre: series.maximos_anuales(serie_sin_imputar(d.sort_values(c.FECHA)), s.cobertura_min_maximos)[c.VALOR]
+            for nombre, d in df_radio.groupby(col_est)
+        }
+        return frecuencia.asimetria_regional(series_pma, excluir=estacion, n_min_anios=s.regional_n_min_anios,
+                                             min_estaciones=s.regional_min_estaciones)
 
     @staticmethod
     def _panel_imputacion(df_est: pd.DataFrame, avisos: list[str], anios_excluidos: list[int],
@@ -163,7 +178,8 @@ class Precipitaciones(Modulo):
 
     @staticmethod
     def _ajuste(ctx: Contexto, ajuste: frecuencia.ResultadoAjuste | None, estacion: str, aviso_incompletos: str,
-                diagnostico: dict[str, frecuencia.DiagnosticoCola], recomendada: str | None) -> None:
+                diagnostico: dict[str, frecuencia.DiagnosticoCola], recomendada: str | None,
+                regional: frecuencia.AsimetriaRegional | None) -> None:
         s = ctx.settings
         justificacion("Modelación probabilística de la serie empírica de extremos para proyectar las Precipitaciones Máximas Diarias asociadas a los periodos de retorno (T).")
         if aviso_incompletos:
@@ -186,8 +202,20 @@ class Precipitaciones(Modulo):
 
         st.subheader("Bondad de Ajuste (Kolmogorov-Smirnov)")
         tabla(ajuste.ks, hide_index=True)
-        st.caption(f"Menor estadístico D: **{ajuste.mejor}**. Nota: los parámetros se estiman con la misma muestra, "
-                   "por lo que la prueba KS es conservadora (tiende a aceptar). Úsela junto con la inspección gráfica.")
+        st.caption(f"Menor estadístico D: **{ajuste.mejor}**. El resultado se decide con el p-valor bootstrap "
+                   f"({s.n_bootstrap} réplicas paramétricas, α = {s.alfa_ks:g}), que considera que los parámetros se "
+                   "estimaron con la misma muestra. El D crítico exacto y el p-valor KS clásico suponen parámetros "
+                   "conocidos y son solo referenciales (tienden a aceptar).")
+        if s.regional_usar:
+            if regional is None:
+                st.caption(f"LP-III ponderada no disponible: hay menos de {s.regional_min_estaciones} estaciones vecinas "
+                           f"con al menos {s.regional_n_min_anios} años completos en el radio de búsqueda.")
+            else:
+                vecinas = ", ".join(f"{e} (G={g:+.2f}, n={n})" for e, g, n in
+                                    zip(regional.estaciones, regional.asimetrias, regional.n_anios))
+                st.caption(f"LP-III ponderada (Bulletin 17B): G estación = {ajuste.asimetria_log:+.3f}, "
+                           f"G regional = {regional.g:+.3f} (MSE {regional.mse:.3f}; {vecinas}) → "
+                           f"G ponderada = {ajuste.asimetria_ponderada:+.3f}.")
 
         t_inf, t_sup = s.t_cola
         con_techo = {d: dg for d, dg in diagnostico.items() if dg.con_techo}
@@ -207,8 +235,9 @@ class Precipitaciones(Modulo):
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=ajuste.t_empirico, y=ajuste.x_sorted, mode="markers",
                                  name="Datos Empíricos (Weibull)", marker=dict(color="black", size=8)))
-        for dist, (color, dash) in ESTILOS_DIST.items():
-            fig.add_trace(go.Scatter(x=ajuste.t_empirico, y=ajuste.curvas[dist], mode="lines",
+        for dist, curva in ajuste.curvas.items():
+            color, dash = ESTILOS_DIST[dist]
+            fig.add_trace(go.Scatter(x=ajuste.t_empirico, y=curva, mode="lines",
                                      name=f"Distribución {dist}", line=dict(color=color, dash=dash)))
         fig.update_layout(
             title="Curvas de Frecuencia Teóricas vs Empíricas",

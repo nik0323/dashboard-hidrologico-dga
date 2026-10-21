@@ -62,6 +62,12 @@ class Settings:
     n_recomendado: int
     t_cola: tuple[int, int]
     crecimiento_min_cola: float
+    alfa_ks: float
+    n_bootstrap: int
+    semilla_bootstrap: int
+    regional_usar: bool
+    regional_n_min_anios: int
+    regional_min_estaciones: int
     qa_max_precip_horaria_mm: float
     agromet_desfase_horas: int
     agromet_horas_min_dia: int
@@ -99,6 +105,12 @@ def cargar_settings(ruta: str | os.PathLike | None = None) -> Settings:
         n_recomendado=crudo["frecuencia"]["n_recomendado"],
         t_cola=tuple(crudo["frecuencia"]["t_cola"]),
         crecimiento_min_cola=float(crudo["frecuencia"]["crecimiento_min_cola"]),
+        alfa_ks=float(crudo["frecuencia"]["alfa_ks"]),
+        n_bootstrap=int(crudo["frecuencia"]["n_bootstrap"]),
+        semilla_bootstrap=int(crudo["frecuencia"]["semilla_bootstrap"]),
+        regional_usar=bool(crudo["asimetria_regional"]["usar"]),
+        regional_n_min_anios=int(crudo["asimetria_regional"]["n_min_anios"]),
+        regional_min_estaciones=int(crudo["asimetria_regional"]["min_estaciones"]),
         qa_max_precip_horaria_mm=float(crudo["qa"]["max_precip_horaria_mm"]),
         agromet_desfase_horas=int(crudo["agromet"]["desfase_horas"]),
         agromet_horas_min_dia=int(crudo["agromet"]["horas_min_dia"]),
@@ -128,6 +140,12 @@ def _validar(s: Settings) -> None:
         errores.append("frecuencia.n_min_ajuste debe ser >= 3 (LP-III requiere asimetría).")
     if len(s.t_cola) != 2 or s.t_cola[0] >= s.t_cola[1] or not set(s.t_cola) <= set(s.t_objetivo):
         errores.append("frecuencia.t_cola debe ser [T_inf, T_sup] creciente y contenido en t_objetivo.")
+    if not 0 < s.alfa_ks < 1:
+        errores.append("frecuencia.alfa_ks debe estar en (0, 1).")
+    if s.n_bootstrap < 0:
+        errores.append("frecuencia.n_bootstrap debe ser >= 0.")
+    if s.regional_n_min_anios < 10 or s.regional_min_estaciones < 2:
+        errores.append("asimetria_regional: n_min_anios >= 10 y min_estaciones >= 2.")
     if not 0 <= s.crecimiento_min_cola < 1:
         errores.append("frecuencia.crecimiento_min_cola debe estar en [0, 1).")
     if not -23 <= s.agromet_desfase_horas <= 23:
