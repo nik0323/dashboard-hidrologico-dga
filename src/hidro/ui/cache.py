@@ -18,13 +18,13 @@ def firma_archivo(ruta: str) -> tuple[str, float, int]:
 
 
 @st.cache_data(show_spinner=False)
-def _serie_dga(fuente: str | bytes, columna_valor: str, firma: tuple | None) -> pd.DataFrame:
-    return lectura.cargar_serie_dga(fuente, columna_valor)
+def _serie_dga(fuente: str | bytes, columna_valor: str, conservar_sin_valor: bool, firma: tuple | None) -> pd.DataFrame:
+    return lectura.cargar_serie_dga(fuente, columna_valor, conservar_sin_valor)
 
 
-def cargar_serie_dga(fuente: str | bytes, columna_valor: str) -> pd.DataFrame:
+def cargar_serie_dga(fuente: str | bytes, columna_valor: str, conservar_sin_valor: bool = False) -> pd.DataFrame:
     firma = firma_archivo(fuente) if isinstance(fuente, str) else None
-    return _serie_dga(fuente, columna_valor, firma)
+    return _serie_dga(fuente, columna_valor, conservar_sin_valor, firma)
 
 
 @st.cache_data(show_spinner=False)

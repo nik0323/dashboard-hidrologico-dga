@@ -25,13 +25,23 @@ def _calidad_con_marcas():
     return ("\n".join(lineas) + "\n").encode("utf-8")
 
 
+FILA_POZO = "06019001,ESTACION CERCANA,6,X,PLACILLA,0343810  ,0710126  ,0,0,210,{fecha},{nivel},{obs},m"
+POZOS_EXTRA = [("15/06/2016", "80.0", "Dinamico"), ("15/07/2016", "", "Seco"), ("15/08/2016", "0", "Embancado")]
+
+
+def _pozos_con_observaciones():
+    """Pozos sintéticos + en ESTACION CERCANA una medición dinámica profunda, una seca y una embancada en 0 m."""
+    extra = "\n".join(FILA_POZO.format(fecha=f, nivel=n, obs=o) for f, n, o in POZOS_EXTRA)
+    return csv_pozos() + (extra + "\n").encode("utf-8")
+
+
 @pytest.fixture
 def dir_datos(tmp_path, monkeypatch):
     archivos = cargar_settings().archivos
     # 14 años con 5 % de vacíos: suficientes años completos para el ajuste (hallazgo #4)
     precip = csv_precipitaciones(inicio_cercana="2000-01-01", fin_cercana="2013-12-31", faltantes=0.05)
     contenidos = {"precipitaciones": precip, "caudales": csv_caudales(),
-                  "pozos": csv_pozos(), "calidad": _calidad_con_marcas()}
+                  "pozos": _pozos_con_observaciones(), "calidad": _calidad_con_marcas()}
     for clave, contenido in contenidos.items():
         (tmp_path / archivos[clave]).write_bytes(contenido)
     escribir_agromet(tmp_path)
@@ -157,6 +167,22 @@ def test_normas_evalua_y_advierte_limites_sin_verificar(dir_datos):
     assert resumen.loc["Sulfato", "Determinadas"] == resumen.loc["Sulfato", "Muestras"]
     assert resumen.loc["pH", "Estado"] == "Cumple"
     assert resumen.loc["Bario", "Estado"] == "Sin parámetro DGA"
+
+
+def test_hallazgo12_pozos_usa_solo_niveles_estaticos(dir_datos):
+    from hidro.core.series import rango_niveles
+    from hidro.io.lectura import cargar_serie_dga
+
+    base = cargar_serie_dga(csv_pozos(), "NIVEL")                  # sin las mediciones agregadas
+    esperado = rango_niveles(base[base["NOMBRE ESTACION"] == "ESTACION CERCANA"])
+
+    at = _ejecutar("Aguas Subterráneas")
+    assert not at.exception and at.selectbox(key="pozos__estacion").value == "ESTACION CERCANA"
+    metricas = {m.label: m.value for m in at.metric}
+    assert metricas["Abatimiento Máximo"] == f"{esperado.nivel_max:.2f} m"     # no 80 m (dinámico)
+    assert metricas["Nivel Somero Máximo"] == f"{esperado.nivel_min:.2f} m"    # no 0 m (embancado)
+    assert any("1 dinámicas (con bombeo) y 1 con pozo embancado" in w.value for w in at.warning)
+    assert any("1 visitas con el pozo **seco**" in i.value and "2016" in i.value for i in at.info)
 
 
 def test_cuenca_tabla_invalida_no_genera_ficha(dir_datos):

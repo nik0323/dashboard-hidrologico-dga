@@ -28,15 +28,17 @@ def leer_csv(fuente: Fuente, **kwargs) -> pd.DataFrame:
     raise ValueError("No fue posible decodificar el archivo con UTF-8 ni Latin-1.")
 
 
-def cargar_serie_dga(fuente: Fuente, columna_valor: str) -> pd.DataFrame:
+def cargar_serie_dga(fuente: Fuente, columna_valor: str, conservar_sin_valor: bool = False) -> pd.DataFrame:
     """Lee una serie DGA y homologa cabeceras.
 
     `columna_valor` es "VALOR" (coincidencia exacta) o un fragmento del nombre de la columna
     de la variable ("PRECIPIT", "CAUDAL", "NIVEL"). Devuelve FECHA_DT, AÑO, MES, MES_NOMBRE,
     Valor_Registrado y, si hay coordenadas, LAT_DEC / LON_DEC [°]. Descarta filas con fecha
-    o valor inválido.
+    inválida y, salvo `conservar_sin_valor=True`, filas sin valor numérico (p. ej. pozos
+    "Seco" / "Sin acceso", que el módulo de pozos necesita conservar; hallazgo #12).
 
-    ADVERTENCIA (hallazgo #11): valores censurados ("<0.01") quedan como NaN y se descartan.
+    La censura de calidad viene en la columna CALIDAD (ver `core.calidad`); un VALOR textual
+    como "<0.01" no es numérico y se trata como fila sin valor.
     """
     df = leer_csv(fuente, sep=",")
     df.columns = df.columns.str.strip().str.upper()
@@ -67,7 +69,7 @@ def cargar_serie_dga(fuente: Fuente, columna_valor: str) -> pd.DataFrame:
         df[c.LON] = df["LONG"].apply(dms_a_decimal)
 
     n_antes = len(df)
-    df = df.dropna(subset=[c.FECHA, c.VALOR])
+    df = df.dropna(subset=[c.FECHA] if conservar_sin_valor else [c.FECHA, c.VALOR])
     if len(df) < n_antes:
         logger.info("Se descartaron %d filas con fecha o valor inválido.", n_antes - len(df))
     return df

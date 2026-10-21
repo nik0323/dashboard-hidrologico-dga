@@ -241,6 +241,38 @@ def test_hallazgo11_sin_columna_calidad():
     assert (clasificar_marca(pd.DataFrame({"VALOR": [1.0, 2.0]})) == SIN_MARCA).all()
 
 
+# ---------- Hallazgo #12: condición de las mediciones de pozos ----------
+def test_hallazgo12_clasifica_y_filtra_niveles_estaticos():
+    from hidro.core.pozos import (DINAMICO, EMBANCADO, ESTATICO, SECO, SIN_ACCESO, SURGENTE, clasificar_condicion,
+                                  niveles_estaticos, resumen_condiciones)
+    df = pd.DataFrame({
+        "OBSERVACION": [None, "Dinamico", " Seco", "Sin acceso", "Embancado", "Surgente", "", "DINAMICO", "Otro"],
+        "Valor_Registrado": [25.0, 80.0, np.nan, np.nan, 0.0, -1.5, 26.0, 75.0, 30.0],
+    })
+    cond = clasificar_condicion(df)
+    assert cond.tolist() == [ESTATICO, DINAMICO, SECO, SIN_ACCESO, EMBANCADO, SURGENTE, ESTATICO, DINAMICO, "Otra (Otro)"]
+    assert niveles_estaticos(df)["Valor_Registrado"].tolist() == [25.0, -1.5, 26.0]
+    r = resumen_condiciones(df).set_index("Condición")
+    assert r.loc[DINAMICO, "Mediciones"] == 2 and r.loc[SECO, "Con nivel"] == 0
+    assert r.loc[SURGENTE, "Usada como nivel estático"] and not r.loc[EMBANCADO, "Usada como nivel estático"]
+
+
+def test_hallazgo12_sin_columna_observacion():
+    from hidro.core.pozos import ESTATICO, clasificar_condicion
+    assert (clasificar_condicion(pd.DataFrame({"Valor_Registrado": [1.0]})) == ESTATICO).all()
+
+
+def test_hallazgo12_conservar_filas_sin_valor():
+    from hidro.io.lectura import cargar_serie_dga
+    csv = ("CODIGO ESTACION,NOMBRE ESTACION,LAT,LONG,Fecha,Nivel,Observacion,Unidad\n"
+           "1,P,0343810,0710126,01/01/2020,25.1,,m\n"
+           "1,P,0343810,0710126,01/02/2020,,Seco,m\n"
+           "1,P,0343810,0710126,32/02/2020,25.0,,m\n").encode("utf-8")
+    assert len(cargar_serie_dga(csv, "NIVEL")) == 1                               # comportamiento original
+    df = cargar_serie_dga(csv, "NIVEL", conservar_sin_valor=True)
+    assert df["OBSERVACION"].fillna("").tolist() == ["", "Seco"]                    # fecha inválida sigue fuera
+
+
 def test_hallazgo7_factor_configurado():
     t = cargar_settings().tormenta
     assert (t.factor_intervalo_fijo, t.factor_min, t.factor_max) == (1.13, 1.0, 1.2)

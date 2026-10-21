@@ -27,10 +27,11 @@ def obtener_fuente(ctx: Contexto, clave: str) -> str | bytes:
     return subido.getvalue()
 
 
-def cargar_o_detener(fuente: str | bytes, columna_valor: str, mensaje: str) -> pd.DataFrame:
+def cargar_o_detener(fuente: str | bytes, columna_valor: str, mensaje: str,
+                     conservar_sin_valor: bool = False) -> pd.DataFrame:
     with st.spinner(mensaje):
         try:
-            return cache.cargar_serie_dga(fuente, columna_valor)
+            return cache.cargar_serie_dga(fuente, columna_valor, conservar_sin_valor)
         except (OSError, ValueError, pd.errors.ParserError) as e:
             logger.exception("Error al cargar datos")
             st.error(f"No se pudieron cargar los datos: {e}")

@@ -189,5 +189,6 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
   >= 5 % entre T=50 y 500). Sigue pendiente: LP-III sin asimetría regional ponderada.
 - #11 (corregido): las muestras de calidad se clasifican por la marca `CALIDAD` de la DGA
   (`<` = límite de detección) y las censuradas se muestran por separado; no se sustituyen valores.
-- #12: observaciones de pozos ignoradas.
+- #12 (corregido): el nivel estático excluye las mediciones dinámicas y las de pozos embancados
+  (columna `OBSERVACION`); los eventos de pozo seco se muestran en la serie.
 - #13: casos borde de `dms_a_decimal`.

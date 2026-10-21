@@ -245,6 +245,47 @@ norma no indica cumplimiento ni incumplimiento.
 
 **Sin cambio:** en los datos revisados, ningún parámetro tiene más de una unidad.
 
+## Hallazgo #12: niveles dinámicos y pozos embancados mezclados con el nivel estático
+
+**Problema.** El módulo de aguas subterráneas ignoraba la columna `OBSERVACION` de la DGA. En
+`niveles_estaticos_pozos_historico.txt`:
+
+| Observación | Mediciones | Tratamiento original |
+|---|---|---|
+| (vacía) | 144.173 | nivel estático (2.305 registran 0 m) |
+| Dinamico | 7.740 | **incluida como nivel estático**, aunque es un nivel con bombeo |
+| Sin acceso | 7.337 | sin nivel; descartada sin aviso |
+| Seco | 4.201 | sin nivel; descartada sin aviso, con lo que se perdía la información de pozo seco |
+| Embancado | 3.026 | 2.838 con nivel ≤ 0: **incluidas como nivel 0 m** (el más somero) |
+| Surgente | 489 | profundidad negativa (nivel sobre la superficie): válida |
+
+**Corrección.** Cada medición se clasifica según su observación (`core/pozos.clasificar_condicion`).
+El nivel estático, es decir la serie, el box plot, el nivel somero, el abatimiento y la amplitud,
+usa solo las mediciones **sin observación** y las **surgentes**. Las dinámicas se pueden mostrar
+aparte en el gráfico (casilla), los eventos de pozo seco se marcan con líneas verticales y se
+listan por año, y un aviso y una tabla informan todas las condiciones. Excluir las mediciones
+dinámicas no es un supuesto: por definición no son niveles estáticos. Las mediciones de nivel = 0 m
+sin observación se conservan, pero se advierten, porque no se puede saber si son nivel en
+superficie o un faltante.
+
+**Efecto sobre los datos reales** (114 pozos a <= 50 km con nivel): **31 pozos cambian**; 56 tienen
+mediciones dinámicas, 4 tienen mediciones embancadas y 5 tienen eventos de pozo seco. Mayores
+cambios:
+
+| Pozo | Dinámicas | Nivel somero [m] | Abatimiento máx. [m] | Amplitud [m] |
+|---|---|---|---|---|
+| ASENTAMIENTO LAS GARZAS | 2 | 0.45 → 0.45 | 43.01 → **8.10** | 42.56 → **7.65** |
+| POZO ASENTAMIENTO LA PUERTA | 4 | 0.90 → 0.90 | 18.63 → **4.50** | 17.73 → **3.60** |
+| A.P. SAN ENRIQUE | 83 | 12.10 → 12.10 | 44.80 → **33.20** | 32.70 → **21.10** |
+| APR LOS MAITENES DE TAGUA TAGUA EL INCA | 13 | 2.37 → 2.37 | 15.43 → **4.38** | 13.06 → **2.01** |
+| APR IDAHUE SAN VICENTE | 7 | 0.19 → 0.19 | 18.58 → **8.39** | 18.39 → **8.20** |
+| FUNDO LA MACARENA | 71 (+1 seco) | 1.50 → **9.00** | 55.55 → **55.06** | 54.05 → **46.06** |
+| SAN VICENTE AP 2 | 81 | 0.00 → 0.00 | 16.79 → **10.79** | 16.79 → **10.79** |
+| APR PENCAHUE BAJO | 35 | 2.72 → 2.72 | 9.67 → **4.07** | 6.95 → **1.35** |
+
+En la mayoría de los casos el original atribuía al acuífero abatimientos que eran el cono de
+bombeo del propio pozo, lo que sobrestimaba la amplitud de fluctuación del nivel freático.
+
 ## Hallazgo #10: elección de la distribución sin revisar la cola
 
 **Problema.** La tormenta de diseño usaba por defecto la distribución con menor estadístico D de
