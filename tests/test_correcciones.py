@@ -141,6 +141,60 @@ def test_hallazgo7_p24_movil():
     assert hieto.sum() == pytest.approx(1.13 * 87.3, abs=1e-9)
 
 
+# ---------- Hallazgo #10: diagnóstico de cola y distribución recomendada ----------
+SERIE_CON_TECHO = np.array([70.0, 69.0, 68.0, 66.0, 40.0])   # n = 5, asimetría de log10 negativa fuerte
+
+
+def test_hallazgo10_detecta_techo_lp3():
+    from hidro.core.frecuencia import ajustar_distribuciones, diagnosticar_cola, distribucion_recomendada
+    aj = ajustar_distribuciones(SERIE_CON_TECHO)
+    diag = diagnosticar_cola(aj)
+    assert aj.mejor == "Log-Pearson III"                     # menor D de KS (se sigue informando)
+    assert diag["Log-Pearson III"].con_techo
+    assert not diag["Gumbel"].con_techo
+    sin_techo = [d for d in aj.ks["Distribución"] if not diag[d].con_techo]
+    assert distribucion_recomendada(aj, diag) == sin_techo[0]
+    # la cota de LP-III acota todos sus cuantiles y coincide con 10^(μ − 2σ/g)
+    from scipy.stats import skew
+    lx = np.log10(SERIE_CON_TECHO)
+    cota = 10 ** (lx.mean() - 2 * lx.std(ddof=1) / skew(lx, bias=False))
+    assert aj.lp3_cota_superior == pytest.approx(cota, rel=1e-12)
+    assert max(aj.cuantiles["Log-Pearson III"].values()) <= aj.lp3_cota_superior
+
+
+def test_hallazgo10_sin_techo_recomienda_menor_d():
+    from casos import SERIES_PMA
+    from hidro.core.frecuencia import ajustar_distribuciones, diagnosticar_cola, distribucion_recomendada
+    aj = ajustar_distribuciones(SERIES_PMA["gumbel_30"](np.random.default_rng(2)))
+    diag = diagnosticar_cola(aj)
+    assert not any(d.con_techo for d in diag.values())
+    assert distribucion_recomendada(aj, diag) == aj.mejor
+    assert diag["Gumbel"].crecimiento == pytest.approx(aj.cuantiles["Gumbel"][500] / aj.cuantiles["Gumbel"][50] - 1)
+
+
+def test_hallazgo10_todas_con_techo_recomienda_menor_d():
+    from casos import SERIES_PMA
+    from hidro.core.frecuencia import ajustar_distribuciones, diagnosticar_cola, distribucion_recomendada
+    aj = ajustar_distribuciones(SERIES_PMA["gumbel_30"](np.random.default_rng(2)))
+    diag = diagnosticar_cola(aj, crecimiento_min=0.99)
+    assert all(d.con_techo for d in diag.values())
+    assert distribucion_recomendada(aj, diag) == aj.mejor
+
+
+def test_hallazgo10_cota_infinita_con_asimetria_positiva():
+    from casos import SERIES_PMA
+    from hidro.core.frecuencia import ajustar_distribuciones
+    aj = ajustar_distribuciones(SERIES_PMA["lognormal_50"](np.random.default_rng(2)))
+    lx = np.log10(SERIES_PMA["lognormal_50"](np.random.default_rng(2)))
+    from scipy.stats import skew
+    assert (skew(lx, bias=False) >= 0) == np.isinf(aj.lp3_cota_superior)
+
+
+def test_hallazgo10_configurado():
+    s = cargar_settings()
+    assert (s.t_cola, s.crecimiento_min_cola) == ((50, 500), 0.05)
+
+
 def test_hallazgo7_factor_configurado():
     t = cargar_settings().tormenta
     assert (t.factor_intervalo_fijo, t.factor_min, t.factor_max) == (1.13, 1.0, 1.2)

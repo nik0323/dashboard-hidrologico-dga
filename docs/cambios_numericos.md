@@ -162,8 +162,39 @@ distribución de menor D en KS, b = 0.33):
 
 TRANQUE LAS PATAGUAS y TRANQUE MILLAHUE no tienen ajuste (0 años completos).
 
-**Observación (hallazgo #10, pendiente).** En RIO CLARO EN EL VALLE, LP-III entrega cuantiles casi
-iguales para T = 50, 100 y 500 años (69.9, 70.1 y 70.2 mm). Es el síntoma de una asimetría
-negativa fuerte en log10, que impone una cota superior a la distribución, y con solo 5 años no es
-físicamente creíble. Para esa estación, Gumbel (P diaria T=100 = 92.33 mm) es más defendible, o
-bien conviene usar una estación vecina o un análisis regional.
+## Hallazgo #10: elección de la distribución sin revisar la cola
+
+**Problema.** La tormenta de diseño usaba por defecto la distribución con menor estadístico D de
+KS. Con pocos años y una asimetría de log10 negativa fuerte, LP-III puede tener el menor D y aun
+así tener una cota superior, $x_{máx} = 10^{\mu - 2\sigma/g}$, que aplana la cola. En ese caso los
+cuantiles casi no crecen con T, lo que no es físicamente creíble para extrapolar.
+
+**Corrección (opción 1, sin supuestos estadísticos nuevos).** Para cada distribución se calcula el
+crecimiento del cuantil entre T = 50 y T = 500 años. Si es menor al 5 %, la distribución se marca
+"con techo" (`[frecuencia].t_cola` y `crecimiento_min_cola`). La tormenta usa por defecto la de
+menor D *sin* techo, y la app muestra el aviso, la cota de LP-III y la distribución recomendada.
+**Ningún cuantil cambia**: las tablas de cuantiles y de KS siguen iguales, la distribución de
+menor D se sigue informando y el usuario puede elegir cualquier distribución en el selector.
+
+**Efecto sobre los datos reales.** Solo RIO CLARO EN EL VALLE (n = 5) cambia de distribución por
+defecto. En las otras 7 estaciones con ajuste ninguna distribución tiene techo: todas crecen entre
+11 % y 46 % de T=50 a T=500.
+
+| RIO CLARO EN EL VALLE | D de KS | P diaria T=50 / 100 / 500 [mm] | Crecimiento T50→T500 | P24 móvil T=100 [mm] |
+|---|---|---|---|---|
+| Log-Pearson III (menor D, **con techo**; cota 70.3 mm) | 0.2492 | 69.87 / 70.07 / 70.24 | +0.5 % | 79.18 |
+| **Log-Normal (recomendada)** | 0.3848 | 85.02 / 90.05 / 101.15 | +19.0 % | **101.75** |
+| Gumbel | 0.4193 | 86.07 / 92.33 / 106.79 | +24.1 % | 104.33 |
+
+La P24 de diseño por defecto para T=100 pasa de 79.18 mm a 101.75 mm (+28.5 %). Con 5 años, las
+tres distribuciones pasan la prueba KS (D crítico 0.6082): la prueba no logra discriminar entre
+ellas. Para el informe conviene justificar la elección o apoyarse en estaciones vecinas con
+registro largo (por ejemplo, SAN FERNANDO, a 6.6 km del punto de control, con 51 años completos).
+
+**Limitación documentada.** En series con coeficiente de variación muy bajo (≈ 5 %), todas las
+distribuciones crecen poco y podrían marcarse aunque no tengan cota. No ocurre en las PMA de esta
+zona, cuyo CV está entre 20 % y 40 %.
+
+**Corrección de interfaz asociada.** El selector de distribución conservaba la elección de la
+estación anterior. Ahora su clave incluye la estación, así que al cambiar de estación se aplica la
+distribución recomendada para la nueva.

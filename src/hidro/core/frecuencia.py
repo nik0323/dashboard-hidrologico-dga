@@ -11,6 +11,8 @@ from scipy.stats import gumbel_r, kstest, lognorm, pearson3, skew
 
 T_OBJETIVO_DEFECTO = np.array([2, 5, 10, 25, 50, 100, 200, 500])
 N_MIN_AJUSTE_DEFECTO = 3
+T_COLA_DEFECTO = (50, 500)
+CRECIMIENTO_MIN_COLA_DEFECTO = 0.05
 
 
 @dataclass(frozen=True)
@@ -23,6 +25,8 @@ class ResultadoAjuste:
     cuantiles: {distribución: {T [años]: valor}}.
     curvas: {distribución: valores teóricos evaluados en t_empirico}.
     ks: tabla Kolmogorov-Smirnov ordenada por estadístico D; mejor: distribución con menor D.
+    lp3_cota_superior: cota superior de LP-III [unidades de la serie] si la asimetría de log10
+    es negativa: 10^(μ − 2σ/g); infinito si g >= 0.
     """
 
     n: int
@@ -34,6 +38,7 @@ class ResultadoAjuste:
     ks: pd.DataFrame
     mejor: str
     t_objetivo: np.ndarray
+    lp3_cota_superior: float
 
 
 def ajustar_distribuciones(serie_maximos: npt.ArrayLike,
@@ -45,8 +50,8 @@ def ajustar_distribuciones(serie_maximos: npt.ArrayLike,
     Devuelve None si quedan menos de `n_min` valores.
 
     ADVERTENCIA (hallazgos #9 y #10): D crítico asintótico 1.36/√n (α = 0.05) con parámetros
-    estimados de la misma muestra; asimetría de LP-III sin ponderación regional; Gumbel con
-    factores asintóticos.
+    estimados de la misma muestra; asimetría de LP-III sin ponderación regional (ver
+    `diagnosticar_cola` para detectar techos); Gumbel con factores asintóticos.
     """
     t_objetivo = np.asarray(t_objetivo)
     x = np.asarray(serie_maximos, dtype=float)
@@ -107,10 +112,51 @@ def ajustar_distribuciones(serie_maximos: npt.ArrayLike,
         })
 
     df_ks = pd.DataFrame(filas_ks).sort_values("Estadístico D").reset_index(drop=True)
+    cota_lp3 = float(10 ** (mean_log - 2 * std_log / skew_log)) if skew_log < 0 else np.inf
     return ResultadoAjuste(
         n=n, n_ceros=n_ceros, x_sorted=x_sorted, t_empirico=t_empirico, cuantiles=cuantiles,
         curvas=curvas, ks=df_ks, mejor=df_ks.loc[0, "Distribución"], t_objetivo=t_objetivo,
+        lp3_cota_superior=cota_lp3,
     )
+
+
+@dataclass(frozen=True)
+class DiagnosticoCola:
+    """Crecimiento relativo [-] del cuantil entre T_inf y T_sup; con_techo si es < al mínimo o no finito."""
+
+    crecimiento: float
+    con_techo: bool
+
+
+def diagnosticar_cola(ajuste: ResultadoAjuste, t_cola: tuple[int, int] = T_COLA_DEFECTO,
+                      crecimiento_min: float = CRECIMIENTO_MIN_COLA_DEFECTO) -> dict[str, DiagnosticoCola]:
+    """Detecta distribuciones cuyos cuantiles casi no crecen con T (hallazgo #10).
+
+    Crecimiento = x(T_sup) / x(T_inf) − 1. Un valor < `crecimiento_min` (5 % entre T = 50 y 500
+    años, por defecto) indica una cota superior que domina la cola, típico de LP-III con
+    asimetría negativa fuerte y pocos años.
+
+    LIMITACIÓN: en series con CV muy bajo (≈ 5 %) todas las distribuciones crecen poco y pueden
+    marcarse aunque no tengan cota; en PMA chilenas típicas (CV 20-40 %) no ocurre.
+    """
+    t_inf, t_sup = t_cola
+    diagnostico = {}
+    for dist, q in ajuste.cuantiles.items():
+        a, b = q[t_inf], q[t_sup]
+        crecimiento = b / a - 1 if np.isfinite(a) and np.isfinite(b) and a > 0 else np.nan
+        diagnostico[dist] = DiagnosticoCola(
+            crecimiento=float(crecimiento),
+            con_techo=bool(not np.isfinite(crecimiento) or crecimiento < crecimiento_min),
+        )
+    return diagnostico
+
+
+def distribucion_recomendada(ajuste: ResultadoAjuste, diagnostico: dict[str, DiagnosticoCola]) -> str:
+    """Distribución de menor D de KS sin techo; si todas tienen techo, la de menor D."""
+    for dist in ajuste.ks["Distribución"]:
+        if not diagnostico[dist].con_techo:
+            return dist
+    return ajuste.mejor
 
 
 def tabla_cuantiles(ajuste: ResultadoAjuste) -> pd.DataFrame:

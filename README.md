@@ -169,6 +169,8 @@ Se conservan a propósito para no cambiar resultados sin revisión; cada una est
 - #7 (corregido): la tormenta de diseño usa P24 = 1.13 · PMA diaria
   (`[tormenta].factor_intervalo_fijo`). Sigue pendiente: b = 0.33 sin calibración local.
 - #8: QMA se calcula con el caudal medio diario, no con el instantáneo.
-- #9, #10: KS con D crítico asintótico; LP-III sin asimetría regional.
+- #9: KS con D crítico asintótico.
+- #10 (parcial): la tormenta usa por defecto la distribución de menor D *sin techo* (crecimiento
+  >= 5 % entre T=50 y 500). Sigue pendiente: LP-III sin asimetría regional ponderada.
 - #11, #12: datos censurados de calidad y observaciones de pozos ignorados.
 - #13: casos borde de `dms_a_decimal`.

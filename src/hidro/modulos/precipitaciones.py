@@ -83,6 +83,10 @@ class Precipitaciones(Modulo):
         aviso_incompletos = (f"Años excluidos de la serie de PMA por cobertura < {s.cobertura_min_maximos:.0%}: "
                              + ", ".join(map(str, incompletos))) if incompletos else ""
         ajuste = frecuencia.ajustar_distribuciones(pma_anual[c.VALOR], s.t_objetivo, s.n_min_ajuste)
+        diagnostico, recomendada = {}, None
+        if ajuste is not None:
+            diagnostico = frecuencia.diagnosticar_cola(ajuste, s.t_cola, s.crecimiento_min_cola)
+            recomendada = frecuencia.distribucion_recomendada(ajuste, diagnostico)
 
         tabs = st.tabs(["Régimen Estacional", "Acumulación Interanual", "Análisis de Extremos (PMA)",
                         "Ajuste Probabilístico", "Hietogramas de Diseño (HEC-HMS)"])
@@ -93,9 +97,9 @@ class Precipitaciones(Modulo):
         with tabs[2]:
             self._extremos(pma_anual, aviso_incompletos)
         with tabs[3]:
-            self._ajuste(ctx, ajuste, estacion, aviso_incompletos)
+            self._ajuste(ctx, ajuste, estacion, aviso_incompletos, diagnostico, recomendada)
         with tabs[4]:
-            self._tormenta(ctx, ajuste, estacion)
+            self._tormenta(ctx, ajuste, estacion, recomendada)
 
     @staticmethod
     def _panel_imputacion(df_est: pd.DataFrame, avisos: list[str], anios_excluidos: list[int],
@@ -148,7 +152,8 @@ class Precipitaciones(Modulo):
         grafico(fig)
 
     @staticmethod
-    def _ajuste(ctx: Contexto, ajuste: frecuencia.ResultadoAjuste | None, estacion: str, aviso_incompletos: str) -> None:
+    def _ajuste(ctx: Contexto, ajuste: frecuencia.ResultadoAjuste | None, estacion: str, aviso_incompletos: str,
+                diagnostico: dict[str, frecuencia.DiagnosticoCola], recomendada: str | None) -> None:
         s = ctx.settings
         justificacion("Modelación probabilística de la serie empírica de extremos para proyectar las Precipitaciones Máximas Diarias asociadas a los periodos de retorno (T).")
         if aviso_incompletos:
@@ -174,6 +179,17 @@ class Precipitaciones(Modulo):
         st.caption(f"Menor estadístico D: **{ajuste.mejor}**. Nota: los parámetros se estiman con la misma muestra, "
                    "por lo que la prueba KS es conservadora (tiende a aceptar). Úsela junto con la inspección gráfica.")
 
+        t_inf, t_sup = s.t_cola
+        con_techo = {d: dg for d, dg in diagnostico.items() if dg.con_techo}
+        if con_techo:
+            st.warning(f"Distribuciones con techo (el cuantil crece < {s.crecimiento_min_cola:.0%} entre T={t_inf} y "
+                       f"T={t_sup} años): " + ", ".join(f"{d} ({dg.crecimiento:+.1%})" for d, dg in con_techo.items())
+                       + ". No se usan por defecto en la tormenta de diseño.")
+            if "Log-Pearson III" in con_techo and np.isfinite(ajuste.lp3_cota_superior):
+                st.caption(f"Cota superior de Log-Pearson III (asimetría de log10 negativa): "
+                           f"{ajuste.lp3_cota_superior:.1f} mm = 10^(μ − 2σ/g).")
+        st.caption(f"Distribución recomendada para diseño: **{recomendada}** (menor D sin techo).")
+
         c1, c2 = st.columns(2)
         descarga_csv("Descargar cuantiles (CSV)", df_res, f"cuantiles_PMA_{estacion}.csv", ctx.key("dl_cuantiles"), c1)
         descarga_csv("Descargar prueba KS (CSV)", ajuste.ks, f"bondad_ajuste_{estacion}.csv", ctx.key("dl_ks"), c2)
@@ -194,7 +210,8 @@ class Precipitaciones(Modulo):
         grafico(fig)
 
     @staticmethod
-    def _tormenta(ctx: Contexto, ajuste: frecuencia.ResultadoAjuste | None, estacion: str) -> None:
+    def _tormenta(ctx: Contexto, ajuste: frecuencia.ResultadoAjuste | None, estacion: str,
+                  recomendada: str | None) -> None:
         tc = ctx.settings.tormenta
         justificacion("Desagregación temporal de la tormenta de diseño (24 hrs) mediante curvas IDF y el método de Bloques Alternos. Define la serie de tiempo para el modelo lluvia-escorrentía HEC-HMS.")
         if ajuste is None:
@@ -203,7 +220,10 @@ class Precipitaciones(Modulo):
 
         dists = list(ajuste.cuantiles.keys())
         c1, c2, c3, c4, c5 = st.columns(5)
-        dist_sel = c1.selectbox("Modelo Probabilístico:", dists, index=dists.index(ajuste.mejor), key=ctx.key("dist"))
+        # key por estación: al cambiar de estación el valor por defecto vuelve a su distribución recomendada
+        dist_sel = c1.selectbox("Modelo Probabilístico:", dists, index=dists.index(recomendada),
+                                key=ctx.key(f"dist__{estacion}"),
+                                help="Por defecto, la distribución de menor D de KS sin techo en la cola.")
         t_sel = c2.selectbox("Periodo de Retorno (Años):", list(tc.t_diseno), key=ctx.key("t_diseno"))
         dt_sel = c3.selectbox("Intervalo de Tiempo Δt (min):", list(tc.dt_minutos), key=ctx.key("dt"))
         coef_b = c4.number_input("Coef. Desagregación (b):", min_value=tc.b_min, max_value=tc.b_max,

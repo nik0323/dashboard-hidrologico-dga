@@ -49,7 +49,7 @@ def test_precipitaciones_muestra_cuantiles_y_hietograma(dir_datos):
     at = _ejecutar("Precipitaciones")
     textos = " ".join(m.value for m in at.markdown) + " ".join(i.value for i in at.info)
     assert "Precipitación Base" in textos
-    assert at.selectbox(key="precipitaciones__dist").value in ("Gumbel", "Log-Pearson III", "Log-Normal")
+    assert at.selectbox(key="precipitaciones__dist__ESTACION CERCANA").value in ("Gumbel", "Log-Pearson III", "Log-Normal")
     assert at.checkbox(key="precipitaciones__usar_agromet").value is True
 
 
@@ -71,6 +71,28 @@ def test_hallazgo7_tormenta_usa_p24_movil(dir_datos):
     at.number_input(key="precipitaciones__factor_if").set_value(1.0).run()
     p24, factor, p_diaria, _ = _p24_mostrado(at)
     assert factor == 1.0 and p24 == p_diaria                       # factor 1 = dashboard original
+
+
+def test_hallazgo10_tormenta_usa_distribucion_recomendada(dir_datos):
+    from hidro.core import frecuencia
+    from hidro.core.estaciones import filtrar_por_radio, serie_estacion
+    from hidro.core.series import maximos_anuales
+    from hidro.io.imputacion import imputar_con_agromet
+    from hidro.io.lectura import cargar_agromet, cargar_serie_dga
+
+    s = cargar_settings()
+    df = cargar_serie_dga(str(dir_datos / s.archivos["precipitaciones"]), "PRECIPIT")
+    fr = filtrar_por_radio(df, s.punto_control.lat, s.punto_control.lon, 30, "NOMBRE ESTACION")
+    agro, _ = cargar_agromet(str(dir_datos), s.patron_agromet, s.qa_max_precip_horaria_mm)
+    serie = imputar_con_agromet(serie_estacion(fr.df_radio, "NOMBRE ESTACION", "ESTACION CERCANA"), agro,
+                                cobertura_min_anual=s.cobertura_min_anual)
+    aj = frecuencia.ajustar_distribuciones(maximos_anuales(serie, s.cobertura_min_maximos)["Valor_Registrado"],
+                                           s.t_objetivo, s.n_min_ajuste)
+    esperada = frecuencia.distribucion_recomendada(aj, frecuencia.diagnosticar_cola(aj, s.t_cola, s.crecimiento_min_cola))
+
+    at = _ejecutar("Precipitaciones")
+    assert at.selectbox(key="precipitaciones__dist__ESTACION CERCANA").value == esperada
+    assert any(f"Distribución recomendada para diseño: **{esperada}**" in x.value for x in at.caption)
 
 
 def test_cuenca_tabla_invalida_no_genera_ficha(dir_datos):

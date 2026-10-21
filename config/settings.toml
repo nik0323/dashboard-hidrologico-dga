@@ -23,6 +23,11 @@ lon = -71.024
 t_objetivo = [2, 5, 10, 25, 50, 100, 200, 500]   # años
 n_min_ajuste = 3       # mínimo absoluto de años con PMA > 0 para ajustar
 n_recomendado = 15     # bajo este n se advierte que la extrapolación es poco confiable
+# Diagnóstico de cola (hallazgo #10): una distribución cuyo cuantil crece menos que
+# crecimiento_min_cola entre t_cola[0] y t_cola[1] años se marca "con techo" y no se usa por defecto
+# en la tormenta de diseño. [SUPUESTO: 5 % entre T = 50 y 500 años, aprobado por el usuario]
+t_cola = [50, 500]
+crecimiento_min_cola = 0.05
 
 [qa]
 max_precip_horaria_mm = 150.0   # mm/h, umbral QA/QC AGROMET
